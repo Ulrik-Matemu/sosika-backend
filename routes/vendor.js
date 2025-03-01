@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const JWT_SECRET = process.env.JWT_SECRET;
 const jwt = require('jsonwebtoken');
+const e = require('express');
 require('dotenv').config();
 
 
@@ -28,14 +29,14 @@ router.post('/vendor/register', async (req, res) => {
 
 
 router.post('/vendor/login', async (req, res) => {
-    const { name, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!name || !password) {
+    if (!email || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
 
     try {
-        const result = await pool.query('SELECT * FROM vendor WHERE name = $1', [name]);
+        const result = await pool.query('SELECT * FROM vendor WHERE name = $1', [email]);
         if (result.rows.length === 0) {
             return res.status(400).json({ error: "Invalid name or password" });
         }

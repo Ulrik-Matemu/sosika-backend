@@ -2,10 +2,12 @@ const express = require('express');
 const pool = require('../db');
 const router = express.Router();
 const multer = require('multer');
+const cloudinary = require('../cloudinary');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const app = express();
 const path = require('path');
+const fs = require('fs');
 
 const storage = multer.diskStorage(
     {
@@ -15,7 +17,9 @@ const storage = multer.diskStorage(
         },
     }
 );
-const upload = multer({ storage: storage });
+
+const upload = multer({ dest: 'uploads/' }); // Temporary storage before Cloudinary upload
+
 
 
 
@@ -61,28 +65,41 @@ router.get('/menuItems/:vendorId', async (req, res) => {
 
 router.post('/menuItems', upload.single('image'), async (req, res) => {
     const { vendorId, name, description, category, price } = req.body;
-    
+
     if (!req.file) {
         return res.status(400).json({ error: "No image uploaded" });
     }
 
-    const imageUrl = `http://localhost:3000/uploads/${req.file.filename}`;
-
-    if (!vendorId || !name || !description || !category || !price) {
-        return res.status(400).json({ error: "All fields are required" });
-    }
-
     try {
-        const result = await pool.query(
+        // Upload image to Cloudinary
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            folder: 'menu-items', // Cloudinary folder name
+            use_filename: true
+        });
+
+        // Remove the temporary file after upload
+        fs.unlinkSync(req.file.path);
+
+        // Store Cloudinary image URL in the database
+        const imageUrl = result.secure_url;
+
+        if (!vendorId || !name || !description || !category || !price) {
+            return res.status(400).json({ error: "All fields are required" });
+        }
+
+        const dbResult = await pool.query(
             'INSERT INTO menu_item (vendor_id, name, description, category, price, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
             [vendorId, name, description, category, price, imageUrl]
         );
-        return res.status(201).json({ message: "Menu item added successfully", menuItem: result.rows[0] });
+
+        return res.status(201).json({ message: "Menu item added successfully", menuItem: dbResult.rows[0] });
+
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: "Failed to add menu item" });
     }
 });
+
 
 router.put('/menuItems/:id/status', async (req, res) => {
     const { id } = req.params;

@@ -99,7 +99,9 @@ CREATE TABLE public.delivery_person (
     is_active boolean DEFAULT false,
     CONSTRAINT pk_delivery_person PRIMARY KEY (id),
     CONSTRAINT ak1_delivery_person UNIQUE (email),
-    CONSTRAINT delivery_person_transport_type_check CHECK (((transport_type)::text = ANY ((ARRAY['foot'::character varying, 'bicycle'::character varying, 'motorcycle'::character varying, 'car'::character varying])::text[]))
+    CONSTRAINT delivery_person_transport_type_check CHECK (
+    transport_type IN ('foot', 'bicycle', 'motorcycle', 'car')
+)
 );
 
 CREATE TABLE public.menu_item (
@@ -112,7 +114,9 @@ CREATE TABLE public.menu_item (
     is_available boolean DEFAULT true,
     image_url character varying(255),
     CONSTRAINT pk_menu_item PRIMARY KEY (id),
-    CONSTRAINT menu_item_category_check CHECK (((category)::text = ANY ((ARRAY['breakfast'::character varying, 'lunch'::character varying, 'dinner'::character varying, 'snacks'::character varying, 'drinks'::character varying])::text[]))
+CONSTRAINT menu_item_category_check CHECK (
+    category IN ('breakfast', 'lunch', 'dinner', 'snacks', 'drinks')
+)
 );
 
 CREATE TABLE public.order_menu_item (

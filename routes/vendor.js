@@ -29,14 +29,14 @@ router.post('/vendor/register', async (req, res) => {
 
 
 router.post('/vendor/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { name, password } = req.body;
 
-    if (!email || !password) {
+    if (!name || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
 
     try {
-        const result = await pool.query('SELECT * FROM vendor WHERE name = $1', [email]);
+        const result = await pool.query('SELECT * FROM vendor WHERE name = $1', [name]);
         if (result.rows.length === 0) {
             return res.status(400).json({ error: "Invalid name or password" });
         }

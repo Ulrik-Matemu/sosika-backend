@@ -323,7 +323,7 @@ router.get("/orders/:orderId/status", async (req, res) => {
         const { orderId } = req.params;
 
         // Fetch order details
-        const order = await pool.query("SELECT order_status, delivery_person_id FROM orders WHERE id = ?", [orderId]);
+        const order = await pool.query("SELECT order_status, delivery_person_id FROM orders WHERE id = $1", [orderId]);
 
         if (!order.length) return res.status(404).json({ error: "Order not found" });
 
@@ -338,7 +338,7 @@ router.get("/orders/:orderId/status", async (req, res) => {
 
         // Fetch delivery person's current location
         const deliveryPerson = await pool.query(
-            "SELECT latitude, longitude FROM delivery_person WHERE id = ?", 
+            "SELECT latitude, longitude FROM delivery_person WHERE id = $1", 
             [delivery_person_id]
         );
 

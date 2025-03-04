@@ -318,7 +318,7 @@ router.get('/orders', async (req, res) => {
     }
 });
 
-app.get("/orders/:orderId/status", async (req, res) => {
+router.get("/orders/:orderId/status", async (req, res) => {
     try {
         const { orderId } = req.params;
 

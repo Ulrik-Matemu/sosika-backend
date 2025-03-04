@@ -318,4 +318,49 @@ router.get('/orders', async (req, res) => {
     }
 });
 
+app.get("/orders/:orderId/status", async (req, res) => {
+    try {
+        const { orderId } = req.params;
+
+        // Fetch order details
+        const order = await db.query("SELECT status, delivery_person_id FROM orders WHERE id = ?", [orderId]);
+
+        if (!order.length) return res.status(404).json({ error: "Order not found" });
+
+        const { status, delivery_person_id } = order[0];
+
+        if (!delivery_person_id) {
+            return res.json({
+                status,
+                delivery_location: null, // No assigned delivery person yet
+            });
+        }
+
+        // Fetch delivery person's current location
+        const deliveryPerson = await db.query(
+            "SELECT latitude, longitude FROM delivery_person WHERE id = ?", 
+            [delivery_person_id]
+        );
+
+        if (!deliveryPerson.length) {
+            return res.json({
+                status,
+                delivery_location: null, // Location not available
+            });
+        }
+
+        const { latitude, longitude } = deliveryPerson[0];
+
+        return res.json({
+            status,
+            delivery_location: { lat: latitude, lng: longitude },
+        });
+
+    } catch (error) {
+        console.error("Error fetching order status:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
 module.exports = router;

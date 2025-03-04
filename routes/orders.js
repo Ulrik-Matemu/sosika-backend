@@ -323,33 +323,32 @@ router.get("/orders/:orderId/status", async (req, res) => {
         const { orderId } = req.params;
 
         // Fetch order details
-        const order = await pool.query("SELECT order_status, delivery_person_id FROM orders WHERE id = $1", [orderId]);
+        const orderResult = await pool.query(
+            "SELECT order_status, delivery_person_id FROM orders WHERE id = $1",
+            [orderId]
+        );
 
-        if (!order.length) return res.status(404).json({ error: "Order not found" });
-
-        const { status, delivery_person_id } = order[0];
-
-        if (!delivery_person_id) {
-            return res.json({
-                status,
-                delivery_location: null, // No assigned delivery person yet
-            });
+        if (orderResult.rows.length === 0) {
+            return res.status(404).json({ error: "Order not found" });
         }
 
-        // Fetch delivery person's current location
-        const deliveryPerson = await pool.query(
-            "SELECT latitude, longitude FROM delivery_person WHERE id = $1", 
+        const { status, delivery_person_id } = orderResult.rows[0];
+
+        if (!delivery_person_id) {
+            return res.json({ status, delivery_location: null }); // No assigned delivery person
+        }
+
+        // Fetch delivery person's location
+        const deliveryPersonResult = await pool.query(
+            "SELECT latitude, longitude FROM delivery_person WHERE id = $1",
             [delivery_person_id]
         );
 
-        if (!deliveryPerson.length) {
-            return res.json({
-                status,
-                delivery_location: null, // Location not available
-            });
+        if (deliveryPersonResult.rows.length === 0) {
+            return res.json({ status, delivery_location: null }); // Delivery person not found
         }
 
-        const { latitude, longitude } = deliveryPerson[0];
+        const { latitude, longitude } = deliveryPersonResult.rows[0];
 
         return res.json({
             status,

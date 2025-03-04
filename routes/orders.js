@@ -332,7 +332,8 @@ router.get("/orders/:orderId/status", async (req, res) => {
             return res.status(404).json({ error: "Order not found" });
         }
 
-        const { status, delivery_person_id } = orderResult.rows[0];
+        const  status  = orderResult.rows.order_status;
+        const delivery_person_id = orderResult.rows.delivery_person_id;
 
         if (!delivery_person_id) {
             return res.json({ status, delivery_location: null }); // No assigned delivery person
@@ -348,7 +349,8 @@ router.get("/orders/:orderId/status", async (req, res) => {
             return res.json({ status, delivery_location: null }); // Delivery person not found
         }
 
-        const { latitude, longitude } = deliveryPersonResult.rows[0];
+        const  latitude = deliveryPersonResult.rows.latitude;
+        const  longitude = deliveryPersonResult.rows.longitude
 
         return res.json({
             status,

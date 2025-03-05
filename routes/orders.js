@@ -349,6 +349,8 @@ router.get("/orders/:orderId/status", async (req, res) => {
             return res.json({ status, delivery_location: null }); // Delivery person not found
         }
 
+        console.log(deliveryPersonResult.rows);
+
         const  latitude = deliveryPersonResult.rows.latitude;
         const  longitude = deliveryPersonResult.rows.longitude
 

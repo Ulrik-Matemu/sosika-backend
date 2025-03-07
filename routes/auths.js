@@ -72,4 +72,50 @@ router.get('/users', async (req, res) => {
     }
 });
 
+router.get('/profile/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await pool.query('SELECT * FROM "user" WHERE id = $1', [userId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        res.status(200).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch user profile" });
+    }
+});
+
+// Add this route to update user profile
+router.put('/profile/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const { fullName, email, phoneNumber, collegeId, regNumber, password, customAddress } = req.body;
+
+    if (!fullName || !email || !phoneNumber || !collegeId || !regNumber) {
+        return res.status(400).json({ error: "All fields are required" });
+    }
+
+    try {
+        let hashedPassword;
+        if (password) {
+            hashedPassword = await bcrypt.hash(password, 10);
+        }
+
+        const result = await pool.query(
+            'UPDATE "user" SET full_name = $1, email = $2, phone_number = $3, college_id = $4, college_registration_number = $5, password = COALESCE($6, password), custom_address = $7 WHERE id = $8 RETURNING *',
+            [fullName, email, phoneNumber, collegeId, regNumber, hashedPassword, customAddress, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.status(200).json({ message: "Profile updated successfully", user: result.rows[0] });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update profile" });
+    }
+});
+
+
 module.exports = router;

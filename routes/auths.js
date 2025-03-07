@@ -118,4 +118,38 @@ router.put('/profile/:userId', async (req, res) => {
 });
 
 
+
+// Update user's custom address
+router.post("/update-location", async (req, res) => {
+    try {
+        const { userId, custom_address } = req.body;
+
+        if (!userId || !custom_address) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        const { lat, lng } = custom_address;
+
+        const query = `
+            UPDATE public."user"
+            SET custom_address = point($1, $2)
+            WHERE id = $3
+            RETURNING id, custom_address;
+        `;
+
+        const result = await pool.query(query, [lat, lng, userId]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ message: "Location updated", user: result.rows[0] });
+    } catch (error) {
+        console.error("Error updating location:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+
+
 module.exports = router;

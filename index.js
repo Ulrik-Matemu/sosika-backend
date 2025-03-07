@@ -18,7 +18,12 @@ const deliveryPersonRouter = require('./routes/deliveryPerson');
 const ordersRouter = require("./routes/orders");
 const orderMenuItemsRouter = require("./routes/orderMenuItems");
 
-app.use(cors());
+app.use(cors({
+    origin: ["http://localhost:5173", "https://ulrik-matemu.github.io/app.sosika/"], // Allow frontend URLs
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allow necessary methods
+    allowedHeaders: ["Content-Type", "Authorization"], // Allow required headers
+    credentials: true, // Allow cookies if needed
+}));
 app.use(express.json({ limit: "50mb" })); // Increase limit for JSON
 app.use(express.urlencoded({ limit: "50mb", extended: true })); // Increase limit for form data
 app.use(express.json());

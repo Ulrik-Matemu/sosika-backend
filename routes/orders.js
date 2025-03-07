@@ -71,17 +71,21 @@ router.get('/orders/:id', async (req, res) => {
         const { id } = req.params;
         const orderResult = await pool.query(
             `SELECT o.*, 
+                    v.geolocation AS pickup_location,
+                    u.custom_address AS dropoff_location,
                     json_agg(json_build_object(
                         'id', omi.id,
                         'menu_item_id', omi.menu_item_id,
                         'quantity', omi.quantity,
                         'price', omi.price,
                         'total_amount', omi.total_amount
-                    )) as items
+                    )) AS items
              FROM orders o
              LEFT JOIN order_menu_item omi ON o.id = omi.order_id
+             LEFT JOIN vendor v ON o.vendor_id = v.id
+             LEFT JOIN "user" u ON o.user_id = u.id
              WHERE o.id = $1
-             GROUP BY o.id`,
+             GROUP BY o.id, v.geolocation, u.custom_address`,
             [id]
         );
 
@@ -97,6 +101,7 @@ router.get('/orders/:id', async (req, res) => {
         });
     }
 });
+
 
 
 router.get('/orders/vendor/:vendorId', async (req, res) => {

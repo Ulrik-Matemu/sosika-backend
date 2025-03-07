@@ -364,4 +364,32 @@ router.get("/orders/:orderId/status", async (req, res) => {
 });
 
 
+router.get('/orders/in-progress/unassigned', async (req, res) => {
+    try {
+        const query = `
+            SELECT o.*, 
+                   json_agg(json_build_object(
+                       'id', omi.id,
+                       'menu_item_id', omi.menu_item_id,
+                       'quantity', omi.quantity,
+                       'price', omi.price,
+                       'total_amount', omi.total_amount
+                   )) as items
+            FROM orders o
+            LEFT JOIN order_menu_item omi ON o.id = omi.order_id
+            WHERE o.order_status = 'in_progress' AND o.delivery_person_id IS NULL
+            GROUP BY o.id
+            ORDER BY o.order_datetime DESC
+        `;
+
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to fetch in-progress orders', 
+            details: error.message 
+        });
+    }
+});
+
 module.exports = router;

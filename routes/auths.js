@@ -167,17 +167,10 @@ router.get('/users/location', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        const locationString = result.rows[0].custom_address;
-        const match = locationString.match(/\(([^,]+), ([^)]+)\)/); // Extract (lat, lng)
-
-        if (!match) {
-            return res.status(500).json({ error: 'Invalid location format' });
-        }
-
-        res.json({
-            lat: parseFloat(match[1]),
-            lng: parseFloat(match[2])
-        });
+        const customAddress = result.rows[0].custom_address; // e.g., "(37.7749,-122.4194)"
+        const [lat, lng] = customAddress.replace(/[()]/g, "").split(",");
+        
+        res.json({ lat: parseFloat(lat), lng: parseFloat(lng) });
 
     } catch (error) {
         res.status(500).json({ 

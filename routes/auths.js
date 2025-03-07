@@ -151,5 +151,42 @@ router.post("/update-location", async (req, res) => {
 });
 
 
+router.get('/users/location', async (req, res) => {
+    try {
+        const userId = req.query.userId; // Assuming userId is passed as a query parameter
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID is required' });
+        }
+
+        const result = await pool.query(
+            `SELECT CAST(custom_address AS TEXT) AS custom_address FROM "user" WHERE id = $1`,
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const locationString = result.rows[0].custom_address;
+        const match = locationString.match(/\(([^,]+), ([^)]+)\)/); // Extract (lat, lng)
+
+        if (!match) {
+            return res.status(500).json({ error: 'Invalid location format' });
+        }
+
+        res.json({
+            lat: parseFloat(match[1]),
+            lng: parseFloat(match[2])
+        });
+
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to fetch user location', 
+            details: error.message 
+        });
+    }
+});
+
+
 
 module.exports = router;

@@ -120,12 +120,7 @@ router.put('/profile/:userId', async (req, res) => {
 
 
 // Update user's custom address
-router.post("/update-location", (req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "http://localhost:5173");
-    res.header("Access-Control-Allow-Methods", "POST");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    next();
-}, async (req, res) => {
+router.post("/update-location", async (req, res) => {
     try {
         const { userId, custom_address } = req.body;
 
@@ -136,7 +131,7 @@ router.post("/update-location", (req, res, next) => {
         const { lat, lng } = custom_address;
 
         const query = `
-            UPDATE public."user"
+            UPDATE "user"
             SET custom_address = point($1, $2)
             WHERE id = $3
             RETURNING id, custom_address;

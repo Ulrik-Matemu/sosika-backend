@@ -1,12 +1,9 @@
-const redisClient = require('./redisClient');
+const client = require('./redisClient');
 
 // Save FCM Token
 const saveToken = async (userId, token) => {
   try {
-   console.log(userId);
-   console.log(token);
-
-    await redisClient.set(userId, token);
+    await client.set(userId, token);
     console.log(`FCM token saved for user ${userId}`);
   } catch (error) {
     console.error('Error saving token:', error);

@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const router = express.Router();
 const { saveToken } = require('../tokenStore');
+const { sendNotificationToUser } = require('../notifications');
+
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -59,7 +61,7 @@ router.post('/login', async (req, res) => {
 
         // Save FCM Token
         await saveToken(user.id, fcmToken);
-
+        await sendNotificationToUser(user.id, 'Welcome', 'You have successfully logged in to Sosika');
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
         res.status(200).json({ message: "Login successful", userId: user.id, token });
     } catch (err) {

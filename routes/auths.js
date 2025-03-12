@@ -40,6 +40,9 @@ router.post('/login', async (req, res) => {
         return res.status(400).json({ error: "All fields are required" });
     }
 
+    if(fcmToken) {
+        console.log("FCM TOKEN RECEIVED");
+    }
    
     try {
         const result = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
@@ -55,7 +58,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Save FCM Token
-        // await saveToken(user.id, fcmToken);
+        await saveToken(user.id, fcmToken);
 
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
         res.status(200).json({ message: "Login successful", userId: user.id, token });

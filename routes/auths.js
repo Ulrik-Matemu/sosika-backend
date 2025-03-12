@@ -34,7 +34,7 @@ const point = `(${lat}, ${lng})`;
 });
 
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password,fcmToken } = req.body;
     if (!email || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
@@ -50,6 +50,9 @@ router.post('/login', async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ error: "Invalid email or password" });
         }
+
+        // Save FCM Token
+        await saveToken(user.id, fcmToken);
 
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
         res.status(200).json({ message: "Login successful", userId: user.id, token });

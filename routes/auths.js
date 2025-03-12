@@ -35,10 +35,15 @@ const point = `(${lat}, ${lng})`;
 });
 
 router.post('/login', async (req, res) => {
-    const { email, password,fcmToken } = req.body;
+    const { email, password, fcmToken } = req.body;
     if (!email || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
+
+    if (!fcmToken) {
+        return res.status(400).json({ error: "FCM Token required" });
+    }
+
     try {
         const result = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
         if (result.rows.length === 0) {

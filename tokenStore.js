@@ -3,6 +3,11 @@ const redisClient = require('./redisClient');
 // Save FCM Token
 const saveToken = async (userId, token) => {
   try {
+    if (token === null || token === undefined) {
+      console.error('Cannot save null or undefined value to Redis');
+      return Promise.reject(new Error('Invalid token value'));
+    }
+
     await redisClient.set(userId, token);
     console.log(`FCM token saved for user ${userId}`);
   } catch (error) {

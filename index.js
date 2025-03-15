@@ -11,6 +11,7 @@ const server = http.createServer(app);
 initSocket(server); // Initialize the socket here
 
 const authRouter = require('./routes/auths');
+const { googleAuth } = require('./routes/google-auth');
 const collegeRouter = require('./routes/colleges');
 const vendorRouter = require('./routes/vendor');
 const menuItemRouter = require('./routes/menuItems');

@@ -5,6 +5,7 @@ const pool = require('../db');
 const router = express.Router();
 const { saveToken } = require('../tokenStore');
 const { sendNotificationToUser } = require('../notifications');
+const { googleAuth } = require('./google-auth');
 
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -192,6 +193,8 @@ router.get('/users/location', async (req, res) => {
     }
 });
 
+
+router.post('/google/', googleAuth);
 
 
 module.exports = router;

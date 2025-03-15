@@ -12,23 +12,17 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 
 router.post('/register', async (req, res) => {
-    const { lat, lng, address } = req.body.customAddress;
-if (!lat || !lng || !address) {
-    return res.status(400).json({ error: "Valid location is required" });
-}
 
-const point = `(${lat}, ${lng})`;
-
-    const { fullName, email, phoneNumber, collegeId, regNumber,  password } = req.body;
-    if (!fullName || !email || !phoneNumber || !collegeId || !regNumber  || !password) {
+    const { fullName, email, phoneNumber, collegeId, password } = req.body;
+    if (!fullName || !email || !phoneNumber || !collegeId || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const result = await pool.query(
-            'INSERT INTO "user" (full_name, email, phone_number, college_id, college_registration_number, custom_address, password) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [fullName, email, phoneNumber, collegeId, regNumber, point, hashedPassword]
+            `INSERT INTO "user" (full_name, email, phone_number, college_id, college_registration_number, custom_address, password) VALUES ($1, $2, $3, $4, 'ADD_TO_BE_VERIFIED', point(0,0), $7) RETURNING *`,
+            [fullName, email, phoneNumber, collegeId, hashedPassword]
         );
         res.status(201).json({ message: "User registered successfully", user: result.rows[0] });
     } catch (err) {

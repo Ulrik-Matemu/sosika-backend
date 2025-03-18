@@ -53,7 +53,6 @@ router.post('/orders', async (req, res) => {
         }
 
         if (vendor_id) {
-            const orderId = newOrder.id;
             await sendVendorNotification(
               vendor_id,
               'New Order Received',

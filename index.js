@@ -6,7 +6,6 @@ const { initSocket } = require('./socket');
 const PORT = process.env.PORT || 3001;
 const app = express();
 const http = require('http');
-const webPush = require('web-push');
 const server = http.createServer(app);
 const webPush = require('web-push');
 const { createClient } = require('redis');

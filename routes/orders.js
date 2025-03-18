@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db'); // Assuming you have PostgreSQL connection pool setup
 const getIo = require('../socket').getIo;
-const webPush = require('web-push');
 require('dotenv').config();
 const sendVendorNotification = require('../index').sendVendorNotification;
 

@@ -8,6 +8,7 @@ const app = express();
 const http = require('http');
 const webPush = require('web-push');
 const server = http.createServer(app);
+const webPush = require('web-push');
 const { createClient } = require('redis');
 
 initSocket(server); // Initialize the socket here

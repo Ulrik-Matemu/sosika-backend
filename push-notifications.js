@@ -40,6 +40,7 @@ async function sendVendorNotification(vendorId, title, body, url) {
         await webPush.sendNotification(subscription, payload);
         results.push({ success: true });
         validSubscriptions.push(subscription);
+        console.log("Notification sent, i think");
       } catch (error) {
         console.error(`Error sending notification to vendor ${vendorId}:`, error);
         

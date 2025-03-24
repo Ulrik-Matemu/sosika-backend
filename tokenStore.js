@@ -10,7 +10,7 @@ const saveToken = async (userId, token) => {
     const tokenValue = token.toString();
     
     await redisClient.set(userKey, tokenValue);
-    console.log(`FCM token saved for user ${userId}`);
+    console.log(`FCM token saved for user ${userId}`, token);
   } catch (error) {
     console.error('Error saving token:', error);
     throw error; // Re-throw to allow proper error handling

@@ -41,14 +41,11 @@ router.post('/deliveryPerson', async (req, res) => {
 
 
 router.post('/deliveryPerson/login', async (req, res) => {
-    const { fullName, password, fcmToken } = req.body;
+    const { fullName, password } = req.body;
     if (!fullName || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
 
-    if (!fcmToken) {
-        return res.status(400).json({ error: "FCM Token required"});
-    }
     
     try {
         const result = await pool.query('SELECT * FROM delivery_person WHERE full_name = $1', [fullName]);

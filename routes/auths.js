@@ -32,14 +32,12 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-    const { email, password, fcmToken } = req.body;
+    const { email, password } = req.body;
     if (!email || !password) {
         return res.status(400).json({ error: "All fields are required" });
     }
 
-    if(fcmToken) {
-        console.log("FCM TOKEN RECEIVED");
-    }
+    
    
     try {
         const result = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
@@ -55,14 +53,35 @@ router.post('/login', async (req, res) => {
         }
 
         // Save FCM Token
-        await saveToken(user.id, fcmToken);
-        await sendNotificationToUser(user.id, 'Welcome', 'You have successfully logged in to Sosika');
+      
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
         res.status(200).json({ message: "Login successful", userId: user.id, token });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to login"});
     }
+});
+
+router.post('/fcm-token', async (req, res) => {
+    const { fcmToken, userId } = req.body;
+    
+    if (!fcmToken || !userId) {
+        return res.status(400).json({ error: "Oops! Something went wrong, not your fault though." });
+    }
+    try {
+        const result = await pool.query('SELECT * FROM "user" WHERE id = $1', [userId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Save the token in your database or Redis
+        await saveToken(userId, fcmToken);
+
+        res.status(200).json({ message: "FCM token saved successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to save FCM token" });
+}
 });
 
 

@@ -3,7 +3,6 @@ const pool = require('../db');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { saveToken } = require('../tokenStore');
 require('dotenv').config();
 const JWT_SECRET = process.env.JWT_SECRET;
 const getIo = require('../socket').getIo;
@@ -62,7 +61,6 @@ router.post('/deliveryPerson/login', async (req, res) => {
         const deliveryPersonId = deliveryPerson.id;
         const deliveryPersonLatitude = deliveryPerson.latitude;
         const deliveryPersonLongitude = deliveryPerson.longitude;
-        await saveToken(deliveryPersonId, fcmToken);
         return res.status(200).json({ message: "Delivery person login successful", token, deliveryPersonName, deliveryPersonId, deliveryPersonLatitude, deliveryPersonLongitude });
     } catch (err) {
         console.error(err);

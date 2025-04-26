@@ -259,8 +259,80 @@ router.post('/reviews', async (req, res) => {
     }
   });
 
+router.get('/reviews', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM reviews');
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error fetching reviews:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 
 router.post('/google/', googleAuth);
+
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+    }
+
+    try {
+        const result = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const user = result.rows[0];
+        const resetToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
+
+        // Send notification to user
+        const resetLink = `https://sosika.netlify.app/reset-password?token=${resetToken}`;
+
+    // 3. Send email
+    await transporter.sendMail({
+      to: user.email,
+      subject: "Reset your Sosika password",
+      html: `
+        <h2>Reset Password</h2>
+        <p>Click below to reset your password. This link will expire in 1 hour.</p>
+        <a href="${resetLink}">Reset Password</a>
+      `,
+    });
+
+        res.status(200).json({ message: "Password reset link sent to your email" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to send password reset link" });
+    }
+});
+
+router.post('/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+        return res.status(400).json({ error: "Token and new password are required" });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        const result = await pool.query(
+            'UPDATE "user" SET password = $1 WHERE id = $2 RETURNING *',
+            [hashedPassword, decoded.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.status(200).json({ message: "Password reset successfully", user: result.rows[0] });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to reset password" });
+    }
+});
 
 
 module.exports = router;

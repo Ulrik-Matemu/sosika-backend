@@ -69,7 +69,7 @@ router.post('/admin', async (req, res) => {
     }
 
     try {
-        if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
+        if (email !== "ulrikjosephat@gmail.com" || password !== "passXLV123") {
             return res.status(400).json({ error: "Invalid email or password" });
         }
 
@@ -79,7 +79,7 @@ router.post('/admin', async (req, res) => {
         console.error(err);
         res.status(500).json({ error: "Failed to login"});
     }
-})
+});
 
 router.post('/fcm-token', async (req, res) => {
     const { fcmToken, userId } = req.body;

@@ -289,6 +289,13 @@ router.post('/forgot-password', async (req, res) => {
 
         // Send notification to user
         const resetLink = `https://sosika.netlify.app/reset-password?token=${resetToken}`;
+        const transporter = nodemailer.createTransport({
+            service: "gmail", // or your email service
+            auth: {
+              user: process.env.EMAIL_USER, // your email address
+              pass: process.env.EMAIL_PASS, // your email password or app password
+            },
+          });
 
     // 3. Send email
     await transporter.sendMail({

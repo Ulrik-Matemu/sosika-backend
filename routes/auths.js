@@ -238,6 +238,27 @@ router.get('/users/location', async (req, res) => {
     }
 });
 
+router.post('/reviews', async (req, res) => {
+    const { user_id, review_text } = req.body;
+  
+    if (!user_id || !review_text) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+  
+    try {
+      const result = await pool.query(
+        `INSERT INTO reviews (user_id, review_text)
+         VALUES ($1, $2) RETURNING *`,
+        [user_id, review_text]
+      );
+  
+      res.status(201).json({ review: result.rows[0], message: 'Review submitted successfully' });
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
 
 router.post('/google/', googleAuth);
 

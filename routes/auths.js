@@ -64,22 +64,31 @@ router.post('/login', async (req, res) => {
 
 router.post('/admin', async (req, res) => {
     const { email, password } = req.body;
+  
     if (!email || !password) {
-        return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({ error: "All fields are required" });
     }
-
+  
     try {
-        if (email !== "ulrikjosephat@gmail.com" || password !== "passXLV123") {
-            return res.status(400).json({ error: "Invalid email or password" });
-        }
-
-        const token = jwt.sign({ adminId: admin.id }, JWT_SECRET, { expiresIn: '1h' });
-        res.status(200).json({ message: "Login successful", adminId: admin.id, token });
+      // Check credentials (hardcoded for now)
+      if (email !== "ulrikjosephat@gmail.com" || password !== "passXLV123") {
+        return res.status(400).json({ error: "Invalid email or password" });
+      }
+  
+      // No need for admin.id - just create a simple admin payload
+      const adminPayload = { role: 'admin', email };
+  
+      const token = jwt.sign(adminPayload, JWT_SECRET, { expiresIn: '1h' });
+  
+      res.status(200).json({ 
+        message: "Login successful", 
+        token 
+      });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to login"});
+      console.error(err);
+      res.status(500).json({ error: "Failed to login" });
     }
-});
+  });
 
 router.post('/fcm-token', async (req, res) => {
     const { fcmToken, userId } = req.body;

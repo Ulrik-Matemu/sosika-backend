@@ -62,6 +62,25 @@ router.post('/login', async (req, res) => {
     }
 });
 
+router.post('/admin', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ error: "All fields are required" });
+    }
+
+    try {
+        if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
+            return res.status(400).json({ error: "Invalid email or password" });
+        }
+
+        const token = jwt.sign({ adminId: admin.id }, JWT_SECRET, { expiresIn: '1h' });
+        res.status(200).json({ message: "Login successful", adminId: admin.id, token });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to login"});
+    }
+})
+
 router.post('/fcm-token', async (req, res) => {
     const { fcmToken, userId } = req.body;
     

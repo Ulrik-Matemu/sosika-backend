@@ -148,9 +148,9 @@ router.get('/profile/:userId', async (req, res) => {
 // Add this route to update user profile
 router.put('/profile/:userId', async (req, res) => {
     const { userId } = req.params;
-    const { fullName, email, phoneNumber, collegeId, regNumber, password, customAddress } = req.body;
+    const { full_name, email, phone_number, college_id, college_registration_number, password, custom_address } = req.body;
 
-    if (!fullName || !email || !phoneNumber || !collegeId || !regNumber) {
+    if (!full_name || !email || !phone_number || !college_id || college_registration_number) {
         return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -162,7 +162,7 @@ router.put('/profile/:userId', async (req, res) => {
 
         const result = await pool.query(
             'UPDATE "user" SET full_name = $1, email = $2, phone_number = $3, college_id = $4, college_registration_number = $5, password = COALESCE($6, password), custom_address = $7 WHERE id = $8 RETURNING *',
-            [fullName, email, phoneNumber, collegeId, regNumber, hashedPassword, customAddress, userId]
+            [full_name, email, phone_number, college_id, college_registration_number, hashedPassword, custom_address, userId]
         );
 
         if (result.rows.length === 0) {

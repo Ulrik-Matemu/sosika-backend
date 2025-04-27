@@ -150,8 +150,25 @@ router.put('/profile/:userId', async (req, res) => {
     const { userId } = req.params;
     const { full_name, email, phone_number, college_id, college_registration_number, password, custom_address } = req.body;
 
-    if (!full_name || !email || !phone_number || !college_id || college_registration_number) {
-        return res.status(400).json({ error: "All fields are required" });
+  
+    if (!full_name) {
+        return res.status(400).json({ error: "Full name is required" });
+    }
+
+    if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+    }
+
+    if (!phone_number) {
+        return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    if (!college_id) {
+        return res.status(400).json({ error: "College ID is required" });
+    }
+
+    if (!college_registration_number) {
+        return res.status(400).json({ error: "College registration number is required" });
     }
 
     try {

@@ -204,7 +204,7 @@ router.patch('/orders/:id/status', async (req, res) => {
                 orderId: id,
                 status: 'in_progress'
             });
-
+            sendNotificationToUser(user_id, 'Order Update', `Your order #${id} is in progress`);
 
 
             // Fetch only active delivery personnel

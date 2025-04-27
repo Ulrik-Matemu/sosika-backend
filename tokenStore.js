@@ -29,7 +29,7 @@ const getToken = async (userId) => {
 };
 
 // Remove FCM Token
-const removeToken = async (userId) => {
+const delToken = async (userId) => {
   try {
     const userKey = `user:${userId.toString()}`;
     await redisClient.del(userKey);
@@ -39,4 +39,4 @@ const removeToken = async (userId) => {
   }
 };
 
-module.exports = { saveToken, getToken, removeToken };
+module.exports = { saveToken, getToken, delToken };

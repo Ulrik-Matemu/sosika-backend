@@ -204,6 +204,8 @@ if (order_status === 'in_progress') {
         status: 'in_progress' 
     });
 
+    sendVendorNotification(user_id, 'Order in Progress', `Your order #${id} is now in progress.`);
+
     // Fetch only active delivery personnel
     const activeDeliveryPersons = await pool.query(
         `SELECT id FROM delivery_person WHERE is_active = true`

@@ -27,10 +27,10 @@ router.post('/orders', async (req, res) => {
         for (const item of order_items) {
             totalItemsAmount += item.quantity * item.price;
         }
-        
+
         const total_amount = totalItemsAmount + delivery_fee;
 
-       
+
 
         // Insert order
         const orderResult = await client.query(
@@ -55,12 +55,12 @@ router.post('/orders', async (req, res) => {
 
         if (vendor_id) {
             await sendVendorNotification(
-              vendor_id,
-              'New Order Received',
-              `Order #${orderId}`,
-              `/vendor/orders/${orderId}`
+                vendor_id,
+                'New Order Received',
+                `Order #${orderId}`,
+                `/vendor/orders/${orderId}`
             );
-          }
+        }
 
         await client.query('COMMIT');
         res.status(201).json({
@@ -122,9 +122,9 @@ router.get('/orders/:id', async (req, res) => {
 
         res.json(orderResult.rows[0]);
     } catch (error) {
-        res.status(500).json({ 
-            error: 'Failed to fetch order', 
-            details: error.message 
+        res.status(500).json({
+            error: 'Failed to fetch order',
+            details: error.message
         });
     }
 });
@@ -179,7 +179,7 @@ router.patch('/orders/:id/status', async (req, res) => {
 
         // Fetch Vendor Geolocation (Pickup Point)
         const vendorResult = await pool.query(
-            `SELECT geolocation FROM vendor WHERE id = $1`, 
+            `SELECT geolocation FROM vendor WHERE id = $1`,
             [vendor_id]
         );
 
@@ -189,7 +189,7 @@ router.patch('/orders/:id/status', async (req, res) => {
 
         // Fetch User Geolocation (Dropoff Point)
         const userResult = await pool.query(
-            `SELECT geolocation FROM "user" WHERE id = $1`, 
+            `SELECT geolocation FROM "user" WHERE id = $1`,
             [user_id]
         );
 
@@ -199,43 +199,43 @@ router.patch('/orders/:id/status', async (req, res) => {
 
         // Notify vendor when order is in progress
         // Notify all active delivery personnel about the new order
-if (order_status === 'in_progress') {
-    io.to(`vendor_${vendor_id}`).emit('orderUpdated', { 
-        orderId: id, 
-        status: 'in_progress' 
-    });
+        if (order_status === 'in_progress') {
+            io.to(`vendor_${vendor_id}`).emit('orderUpdated', {
+                orderId: id,
+                status: 'in_progress'
+            });
 
-    sendNotificationToUser(user_id, 'Order Status Update', `Your order #${id} is now in progress.`);
 
-    // Fetch only active delivery personnel
-    const activeDeliveryPersons = await pool.query(
-        `SELECT id FROM delivery_person WHERE is_active = true`
-    );
 
-    if (activeDeliveryPersons.rows.length > 0) {
-        io.to('delivery_persons').emit('newOrderAvailable', { 
-            orderId: id, 
-            status: 'in_progress', 
-            pickup_location,
-            dropoff_location
-        });
-    }
-}
+            // Fetch only active delivery personnel
+            const activeDeliveryPersons = await pool.query(
+                `SELECT id FROM delivery_person WHERE is_active = true`
+            );
+
+            if (activeDeliveryPersons.rows.length > 0) {
+                io.to('delivery_persons').emit('newOrderAvailable', {
+                    orderId: id,
+                    status: 'in_progress',
+                    pickup_location,
+                    dropoff_location
+                });
+            }
+        }
 
 
         // Notify assigned delivery person only if the order is assigned or completed
         if (delivery_person_id) {
             if (order_status === 'assigned') {
-                io.to(`delivery_${delivery_person_id}`).emit('orderAssigned', { 
-                    orderId: id, 
-                    status: 'assigned', 
+                io.to(`delivery_${delivery_person_id}`).emit('orderAssigned', {
+                    orderId: id,
+                    status: 'assigned',
                     pickup_location,
                     dropoff_location
                 });
             } else if (order_status === 'completed') {
-                io.to(`delivery_${delivery_person_id}`).emit('orderCompleted', { 
-                    orderId: id, 
-                    status: 'completed' 
+                io.to(`delivery_${delivery_person_id}`).emit('orderCompleted', {
+                    orderId: id,
+                    status: 'completed'
                 });
             }
         }
@@ -269,9 +269,9 @@ router.patch('/orders/:id/ratings', async (req, res) => {
 
         res.json(result.rows[0]);
     } catch (error) {
-        res.status(500).json({ 
-            error: 'Failed to add ratings', 
-            details: error.message 
+        res.status(500).json({
+            error: 'Failed to add ratings',
+            details: error.message
         });
     }
 });
@@ -280,13 +280,13 @@ router.patch('/orders/:id/ratings', async (req, res) => {
 // Get all orders with filtering options
 router.get('/orders', async (req, res) => {
     try {
-        const { 
-            user_id, 
-            vendor_id, 
+        const {
+            user_id,
+            vendor_id,
             delivery_person_id,
             status,
             from_date,
-            to_date 
+            to_date
         } = req.query;
 
         let query = `
@@ -346,9 +346,9 @@ router.get('/orders', async (req, res) => {
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
-        res.status(500).json({ 
-            error: 'Failed to fetch orders', 
-            details: error.message 
+        res.status(500).json({
+            error: 'Failed to fetch orders',
+            details: error.message
         });
     }
 });
@@ -420,9 +420,9 @@ router.get('/orders/in-progress/unassigned', async (req, res) => {
         const result = await pool.query(query);
         res.json(result.rows);
     } catch (error) {
-        res.status(500).json({ 
-            error: 'Failed to fetch in-progress orders', 
-            details: error.message 
+        res.status(500).json({
+            error: 'Failed to fetch in-progress orders',
+            details: error.message
         });
     }
 });

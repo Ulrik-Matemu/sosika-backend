@@ -5,6 +5,7 @@ const getIo = require('../socket').getIo;
 require('dotenv').config();
 const { sendVendorNotification } = require('../push-notifications');
 const nodemailer = require('nodemailer');
+const { sendNotificationToUser } = require('../notifications');
 
 
 router.post('/orders', async (req, res) => {
@@ -204,7 +205,7 @@ if (order_status === 'in_progress') {
         status: 'in_progress' 
     });
 
-    sendVendorNotification(user_id, 'Order in Progress', `Your order #${id} is now in progress.`);
+    sendNotificationToUser(user_id, 'Order Status Update', `Your order #${id} is now in progress.`);
 
     // Fetch only active delivery personnel
     const activeDeliveryPersons = await pool.query(

@@ -4,7 +4,7 @@ const pool = require('../db'); // Assuming you have PostgreSQL connection pool s
 const getIo = require('../socket').getIo;
 require('dotenv').config();
 const { sendVendorNotification } = require('../push-notifications');
-
+const nodemailer = require('nodemailer');
 
 
 router.post('/orders', async (req, res) => {
@@ -65,6 +65,19 @@ router.post('/orders', async (req, res) => {
         res.status(201).json({
             message: 'Order created successfully',
             order_id: orderId
+        });
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+
+        await transporter.sendMail({
+            to: process.env.EMAIL_USER,
+            subject: "New Order has been made",
+            text: `A new order has been placed with ID: ${orderId}.`,
         });
     } catch (error) {
         await client.query('ROLLBACK');

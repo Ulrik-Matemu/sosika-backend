@@ -178,7 +178,7 @@ router.put('/profile/:userId', async (req, res) => {
         }
 
         const result = await pool.query(
-            'UPDATE "user" SET full_name = $1, email = $2, phone_number = $3, college_id = $4, college_registration_number = $5, password = COALESCE($6, password), WHERE id = $7 RETURNING *',
+            'UPDATE "user" SET full_name = $1, email = $2, phone_number = $3, college_id = $4, college_registration_number = $5, password = COALESCE($6, password) WHERE id = $7 RETURNING *',
             [full_name, email, phone_number, college_id, college_registration_number, password, userId]
         );
 

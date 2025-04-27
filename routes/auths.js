@@ -150,9 +150,7 @@ router.put('/profile/:userId', async (req, res) => {
     const { userId } = req.params;
     const { full_name, email, phone_number, college_id, college_registration_number, password, custom_address } = req.body;
 
-    if (!full_name || !email || !phone_number || !college_id || college_registration_number) {
-        return res.status(400).json({ error: "All fields are required" });
-    }
+    
 
     try {
         let hashedPassword;

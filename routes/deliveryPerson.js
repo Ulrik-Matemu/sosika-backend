@@ -156,7 +156,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
         }
         
 
-        res.json({ message: 'Order assigned successfully', dropoff_location, pickup_location });
+        res.json({ message: 'Order assigned successfully', dropoff_location, pickup_location, orderId });
     } catch (error) {
         await client.query('ROLLBACK');
         res.status(500).json({ error: 'Failed to assign order', details: error.message });

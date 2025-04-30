@@ -102,7 +102,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             return res.status(404).json({ error: 'Order not found' });
         }
 
-        const { order_status, vendor_id } = orderCheck.rows[0];
+        const { order_status, vendor_id, user_id } = orderCheck.rows[0];
 
         if (order_status !== 'pending' && order_status !== 'in_progress') {
             await client.query('ROLLBACK');
@@ -132,14 +132,30 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             status: 'assigned'
         });
 
-        io.to(`delivery_person_${delivery_person_id}`).emit('orderAssigned', {
-            orderId,
-            status: 'assigned',
-            pickup_location,
-            dropoff_location
-        });
+        let pickup_location = null;
+        let dropoff_location = null;
+        //Fetch Vendor Geolocation
+        const vendorResult = await pool.query(
+            `SELECT geolocation FROM vendor WHERE id = $1`,
+            [vendor_id]
+        );
 
-        res.json({ message: 'Order assigned successfully' });
+        if (vendorResult.rows.length > 0) {
+            pickup_location = vendorResult.rows[0].geolocation; // POINT(x, y)
+        }
+
+        //Fetch User Geolocation 
+        const userResult = await pool.query(
+            `SELECT geolocation FROM users WHERE id = $1`,
+            [user_id]
+        )
+
+        if (vendorResult.rows.length > 0) {
+            dropoff_location = userResult.rows[0].geolocation; // POINT(x, y)
+        }
+        
+
+        res.json({ message: 'Order assigned successfully', dropoff_location, pickup_location });
     } catch (error) {
         await client.query('ROLLBACK');
         res.status(500).json({ error: 'Failed to assign order', details: error.message });

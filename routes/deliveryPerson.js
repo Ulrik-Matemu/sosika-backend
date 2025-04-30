@@ -93,9 +93,10 @@ router.put('/orders/:orderId/accept', async (req, res) => {
 
         // Check if the order is available to be accepted
         const orderCheck = await client.query(
-            `SELECT order_status, vendor_id FROM orders WHERE id = $1`,
+            `SELECT order_status, vendor_id, user_id FROM orders WHERE id = $1`,
             [orderId]
         );
+        
 
         if (orderCheck.rows.length === 0) {
             await client.query('ROLLBACK');
@@ -150,7 +151,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             [user_id]
         )
 
-        if (vendorResult.rows.length > 0) {
+        if (userResult.rows.length > 0) {
             dropoff_location = userResult.rows[0].geolocation; // POINT(x, y)
         }
         

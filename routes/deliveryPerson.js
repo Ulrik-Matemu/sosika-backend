@@ -12,23 +12,23 @@ router.get('/deliveryPerson', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM delivery_person');
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: "No delivery persons found"});
+            return res.status(404).json({ error: "No delivery persons found" });
         }
         return res.status(201).json(result.rows);
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ error: "Failed to fetch delivery persons"});
+        return res.status(500).json({ error: "Failed to fetch delivery persons" });
     }
 });
 
 
 router.post('/deliveryPerson', async (req, res) => {
     const { fullName, phoneNumber, latitude, longitude, transportType, collegeId, password } = req.body;
- 
 
-    try{
+
+    try {
         const hashedPassword = await bcrypt.hash(password, 10);
-        const result = await pool.query('INSERT INTO delivery_person (full_name, phone_number, latitude, longitude, transport_type, college_id, password) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', 
+        const result = await pool.query('INSERT INTO delivery_person (full_name, phone_number, latitude, longitude, transport_type, college_id, password) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
             [fullName, phoneNumber, latitude, longitude, transportType, collegeId, hashedPassword]
         );
         return res.status(201).json({ message: "Delivery person registered successfully", user: result.rows[0] });
@@ -45,7 +45,7 @@ router.post('/deliveryPerson/login', async (req, res) => {
         return res.status(400).json({ error: "All fields are required" });
     }
 
-    
+
     try {
         const result = await pool.query('SELECT * FROM delivery_person WHERE full_name = $1', [fullName]);
         if (result.rows.length === 0) {
@@ -132,6 +132,13 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             status: 'assigned'
         });
 
+        io.to(`delivery_person_${delivery_person_id}`).emit('orderAssigned', {
+            orderId,
+            status: 'assigned',
+            pickup_location,
+            dropoff_location
+        });
+
         res.json({ message: 'Order assigned successfully' });
     } catch (error) {
         await client.query('ROLLBACK');
@@ -185,7 +192,7 @@ router.put('/deliveryPerson/update-location/:id', async (req, res) => {
             return res.status(404).json({ error: 'Delivery person not found' });
         }
 
-        
+
         res.json({ message: 'Location updated successfully', deliveryPerson: result.rows[0] });
         console.log("Delivery Guy Location updated");
     } catch (error) {
@@ -217,9 +224,9 @@ router.get('/deliveryPerson/:id/orders', async (req, res) => {
 
 router.put('/deliveryPerson/:id', async (req, res) => {
     const { id } = req.params;
-    const { fullName , phoneNumber, email, password } = req.body;
+    const { fullName, phoneNumber, email, password } = req.body;
 
-    
+
 
     const fields = [];
     const values = [];
@@ -241,10 +248,10 @@ router.put('/deliveryPerson/:id', async (req, res) => {
         values.push(email);
     }
 
-  
+
 
     if (fields.length === 0) {
-        return res.status(400).json({ error: 'No field to update'});
+        return res.status(400).json({ error: 'No field to update' });
     }
 
     fields.forEach((field, index) => {
@@ -261,11 +268,11 @@ router.put('/deliveryPerson/:id', async (req, res) => {
         const result = await pool.query(query, values);
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Delivery Person not found'});
+            return res.status(404).json({ error: 'Delivery Person not found' });
         }
 
-        return res.status(200).json({ message: 'Profile Updated Successfully'});
-    } catch(err) {
+        return res.status(200).json({ message: 'Profile Updated Successfully' });
+    } catch (err) {
         console.error(err);
         return res.status(500).json({ error: 'Error updating profile' });
     }
@@ -283,7 +290,7 @@ router.get('/deliveryPerson/:id', async (req, res) => {
         return res.status(200).json(result.rows[0]);
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ error: "Error fetching delivery person details"});
+        return res.status(500).json({ error: "Error fetching delivery person details" });
     }
 });
 

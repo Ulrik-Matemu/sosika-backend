@@ -135,6 +135,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
 
         let pickup_location = null;
         let dropoff_location = null;
+        let phoneNumber = null;
         //Fetch Vendor Geolocation
         const vendorResult = await pool.query(
             `SELECT geolocation FROM vendor WHERE id = $1`,
@@ -154,9 +155,20 @@ router.put('/orders/:orderId/accept', async (req, res) => {
         if (userResult.rows.length > 0) {
             dropoff_location = userResult.rows[0].geolocation; // POINT(x, y)
         }
+
+        // Fetch User Phone Number
+        const userPhone = await pool.query(
+            `SELECT phone_number FROM "user" WHERE id = $1`,
+            [user_id]
+        )
+
+        if (userPhone.rows.length > 0) {
+            phoneNumber = userPhone.rows[0].phone_number;
+        }
+
         
 
-        res.json({ message: 'Order assigned successfully', dropoff_location, pickup_location, orderId });
+        res.json({ message: 'Order assigned successfully', dropoff_location, pickup_location, orderId, phoneNumber });
     } catch (error) {
         await client.query('ROLLBACK');
         res.status(500).json({ error: 'Failed to assign order', details: error.message });

@@ -25,16 +25,45 @@ const upload = multer({ dest: 'uploads/' }); // Temporary storage before Cloudin
 
 router.get('/menuItems', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM menu_item');
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: "No menu items found"});
+        const { page, limit } = req.query;
+
+        // Default to returning all items if pagination is not specified
+        if (!page || !limit) {
+            const result = await pool.query('SELECT * FROM menu_item');
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: "No menu items found" });
+            }
+            return res.status(200).json(result.rows);
         }
-        return res.status(200).json(result.rows);
+
+        // Convert page and limit to integers
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const offset = (pageNum - 1) * limitNum;
+
+        const paginatedQuery = 'SELECT * FROM menu_item LIMIT $1 OFFSET $2';
+        const result = await pool.query(paginatedQuery, [limitNum, offset]);
+
+        // Optional: Get total count (for frontend UI pagination)
+        const countResult = await pool.query('SELECT COUNT(*) FROM menu_item');
+        const totalItems = parseInt(countResult.rows[0].count);
+        const totalPages = Math.ceil(totalItems / limitNum);
+
+        return res.status(200).json({
+            data: result.rows,
+            pagination: {
+                totalItems,
+                totalPages,
+                currentPage: pageNum,
+                itemsPerPage: limitNum
+            }
+        });
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ error: "Failed to fetch menu items"});
+        return res.status(500).json({ error: "Failed to fetch menu items" });
     }
 });
+
 
 router.get('/menuItems/item/:id', async (req, res) => {
     const id = req.params.id;

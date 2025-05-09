@@ -8,6 +8,69 @@ const nodemailer = require('nodemailer');
 const { sendNotificationToUser } = require('../notifications');
 
 
+// Define this first, before any route like /orders/:id
+router.post('/orders/other-orders', async (req, res) => {
+    try {
+        const { userId, itemName, extraInstructions, quantity } = req.body;
+
+        if (!userId || !itemName || !quantity) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields'
+            });
+        }
+
+        const dbResult = await pool.query(
+            'INSERT INTO other_orders (user_id, item_name, extra_instructions, quantity) VALUES ($1, $2, $3, $4) RETURNING *',
+            [userId, itemName, extraInstructions, quantity]
+        );
+
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+
+        await transporter.sendMail({
+            to: process.env.EMAIL_USER,
+            subject: "New Order has been made, but not from the menu",
+            text: `User: ${userId} has placed an order. They want ${quantity} of "${itemName}" with extra instructions: "${extraInstructions}."`,
+        });
+
+        return res.status(201).json({
+            success: true,
+            order: dbResult.rows[0]
+        });
+    } catch (error) {
+        console.error('Error creating other order:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to create other order',
+            error: error.message
+        });
+    }
+});
+
+router.get('/orders/other-orders', async (req, res) => {
+    try {
+        const dbResult = await pool.query('SELECT * FROM other_orders');
+        return res.status(200).json({
+            success: true,
+            orders: dbResult.rows
+        });
+    } catch (error) {
+        console.error('Error fetching other orders:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch other orders',
+            error: error.message
+        });
+    }
+});
+
+
 router.post('/orders', async (req, res) => {
     const client = await pool.connect();
     try {
@@ -427,67 +490,6 @@ router.get('/orders/in-progress/unassigned', async (req, res) => {
     }
 });
 
-router.post('/orders/other-order', async (req, res) => {
-    try {
-        const { userId, itemName, extraInstructions, quantity } = req.body;
 
-        if (!userId || !itemName || !quantity) {
-            return res.status(400).json({
-                success: false,
-                message: 'Missing required fields'
-            });
-        }
-
-        const dbResult = await pool.query(
-            'INSERT INTO other_orders (user_id, item_name, extra_instructions, quantity) VALUES ($1, $2, $3, $4) RETURNING *',
-            [userId, itemName, extraInstructions, quantity]
-        );
-
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
-
-        await transporter.sendMail({
-            to: process.env.EMAIL_USER,
-            subject: "New Order has been made, but not from the menu",
-            text: `User: ${userId} has placed an order. They want ${quantity} of "${itemName}" with extra instructions: "${extraInstructions}."`,
-        });
-
-        return res.status(201).json({
-            success: true,
-            order: dbResult.rows[0]
-        });
-    } catch (error) {
-        console.error('Error creating other order:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to create other order',
-            error: error.message
-        });
-    }
-})
-
-router.get('/orders/other-orders', async (req, res) => {
-    try {
-        dbResult = await pool.query(
-            'SELECT * FROM other_orders'
-        )
-        return res.status(200).json({
-            success: true,
-            orders: dbResult.rows
-        });
-    } catch (error) {
-        console.error('Error fetching other orders:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch other orders',
-            error: error.message
-        });
-    }
-})
 
 module.exports = router;

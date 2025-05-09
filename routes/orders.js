@@ -443,6 +443,20 @@ router.post('/orders/other-orders', async (req, res) => {
             [userId, itemName, extraInstructions, quantity]
         );
 
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+
+        await transporter.sendMail({
+            to: process.env.EMAIL_USER,
+            subject: "New Order has been made, but not from the menu",
+            text: `User: ${userId} has placed an order. They want ${quantity} of "${itemName}" with extra instructions: "${extraInstructions}."`,
+        });
+
         return res.status(201).json({
             success: true,
             order: dbResult.rows[0]

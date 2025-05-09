@@ -427,4 +427,26 @@ router.get('/orders/in-progress/unassigned', async (req, res) => {
     }
 });
 
+router.post('/orders/other-orders', async (req, res) => {
+    try {
+        const { userId, itemName, extraInstructions, quantity } = req.body;
+        const dbResult = await pool.query(
+            'INSERT INTO other_orders (user_id, item_name, extra_instructions, quantity) VALUES ($1, $2, $3, $4) RETURNING *',
+            [userId, itemName, extraInstructions, quantity]
+        );
+
+        return res.status(201).json({
+            success: true,
+            order: dbResult.rows[0]
+        });
+    } catch (error) {
+        console.error('Error creating other order:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to create other order',
+            error: error.message
+        });
+    }
+})
+
 module.exports = router;

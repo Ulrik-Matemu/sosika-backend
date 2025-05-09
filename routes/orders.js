@@ -427,7 +427,7 @@ router.get('/orders/in-progress/unassigned', async (req, res) => {
     }
 });
 
-router.post('/orders/other-orders', async (req, res) => {
+router.post('/orders/other-order', async (req, res) => {
     try {
         const { userId, itemName, extraInstructions, quantity } = req.body;
 

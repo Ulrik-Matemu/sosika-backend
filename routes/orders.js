@@ -471,4 +471,23 @@ router.post('/orders/other-orders', async (req, res) => {
     }
 })
 
+router.get('/orders/other-orders', async (req, res) => {
+    try {
+        dbResult = await pool.query(
+            'SELECT * FROM other_orders'
+        )
+        return res.status(200).json({
+            success: true,
+            orders: dbResult.rows
+        });
+    } catch (error) {
+        console.error('Error fetching other orders:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch other orders',
+            error: error.message
+        });
+    }
+})
+
 module.exports = router;

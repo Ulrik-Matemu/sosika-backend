@@ -7,65 +7,94 @@ const router = express.Router();
 const { saveToken } = require('../tokenStore');
 const { sendNotificationToUser } = require('../notifications');
 const { googleAuth } = require('./google-auth');
+import { body, validationResult } from 'express-validator';
 
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 
-router.post('/register', async (req, res) => {
-
-    const { fullName, email, phoneNumber, collegeId, password } = req.body;
-    if (!fullName || !email || !phoneNumber || !collegeId || !password) {
-        return res.status(400).json({ error: "All fields are required" });
-    }
-
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const existingUser = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
-        if (existingUser.rows.length > 0) {
-            return res.status(400).json({ error: "Email already exists" });
-        }
-        const result = await pool.query(
-            `INSERT INTO "user" (full_name, email, phone_number, college_id, college_registration_number, custom_address, password) VALUES ($1, $2, $3, $4, 'ADD_TO_BE_VERIFIED', point(0,0), $5) RETURNING *`,
-            [fullName, email, phoneNumber, collegeId, hashedPassword]
+router.post(
+    '/register',
+    [
+      body('fullName').notEmpty().withMessage('Full name is required'),
+      body('email').isEmail().withMessage('Valid email is required'),
+      body('collegeId').notEmpty().withMessage('College ID is required'),
+      body('password')
+        .isLength({ min: 6 })
+        .withMessage('Password must be at least 6 characters long'),
+    ],
+    async (req, res) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+  
+      const { fullName, email, phoneNumber, collegeId, password } = req.body;
+  
+      try {
+        const existingUser = await pool.query(
+          'SELECT * FROM "user" WHERE email = $1',
+          [email]
         );
-        res.status(201).json({ message: "User registered successfully", user: result.rows[0] });
-    } catch (err) {
+        if (existingUser.rows.length > 0) {
+          return res.status(400).json({ error: 'Email already exists' });
+        }
+  
+        const hashedPassword = await bcrypt.hash(password, 10);
+  
+        const result = await pool.query(
+          `INSERT INTO "user" (full_name, email, phone_number, college_id, college_registration_number, custom_address, password)
+           VALUES ($1, $2, $3, $4, 'ADD_TO_BE_VERIFIED', point(0,0), $5)
+           RETURNING *`,
+          [fullName, email, phoneNumber, collegeId, hashedPassword]
+        );
+  
+        res.status(201).json({
+          message: 'User registered successfully',
+          user: result.rows[0],
+        });
+      } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Failed to register user" });
+        res.status(500).json({ error: 'Failed to register user' });
+      }
     }
-});
+  );
 
-router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        return res.status(400).json({ error: "All fields are required" });
-    }
-
-    
-   
-    try {
+router.post(
+    '/login',
+    [
+      body('email').isEmail().withMessage('Valid email is required'),
+      body('password').notEmpty().withMessage('Password is required'),
+    ],
+    async (req, res) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+  
+      const { email, password } = req.body;
+  
+      try {
         const result = await pool.query('SELECT * FROM "user" WHERE email = $1', [email]);
         if (result.rows.length === 0) {
-            return res.status(400).json({ error: 'Invalid email or password' });
+          return res.status(400).json({ error: 'Invalid email or password' });
         }
-
+  
         const user = result.rows[0];
-        console.log(user.password);
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(400).json({ error: "Invalid email or password" });
+          return res.status(400).json({ error: 'Invalid email or password' });
         }
-
-        // Save FCM Token
-      
+  
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
-        res.status(200).json({ message: "Login successful", userId: user.id, token });
-    } catch (err) {
+  
+        res.status(200).json({ message: 'Login successful', userId: user.id, token });
+      } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Failed to login"});
+        res.status(500).json({ error: 'Failed to login' });
+      }
     }
-});
+  );
 
 router.post('/admin', async (req, res) => {
     const { email, password } = req.body;

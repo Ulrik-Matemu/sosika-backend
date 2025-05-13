@@ -9,6 +9,14 @@ const http = require('http');
 const server = http.createServer(app);
 const webPush = require('web-push');
 const { createClient } = require('redis');
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: "Too many requests, please try again later.",
+})
 
 initSocket(server); // Initialize the socket here
 // Create Redis client
@@ -44,7 +52,18 @@ const deliveryPersonRouter = require('./routes/deliveryPerson');
 const ordersRouter = require("./routes/orders");
 const orderMenuItemsRouter = require("./routes/orderMenuItems");
 
-app.use(cors());
+app.use(cors({
+    origin: [
+      "https://sosika.netlify.app",
+      "https://ulrik-matemu.github.io",
+      "https://sosikavendor.netlify.app",
+      "https://sosikaadmin.netlify.app"
+    ],
+    credentials: true
+  }));
+  
+app.use(limiter); // Apply rate limiting to all requests
+app.use(helmet()); // Use helmet for security
 app.use(express.json({ limit: "50mb" })); // Increase limit for JSON
 app.use(express.urlencoded({ limit: "50mb", extended: true })); // Increase limit for form data
 app.use(express.json());

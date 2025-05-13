@@ -58,7 +58,7 @@ app.use(cors({
       "https://ulrik-matemu.github.io",
       "https://sosikavendor.netlify.app",
       "https://sosikaadmin.netlify.app",
-      "https://localhost:5173"
+      "http://localhost:5173"
     ],
     credentials: true
   }));

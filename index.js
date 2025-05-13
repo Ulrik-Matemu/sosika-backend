@@ -9,8 +9,8 @@ const http = require('http');
 const server = http.createServer(app);
 const webPush = require('web-push');
 const { createClient } = require('redis');
-import rateLimit from 'express-rate-limit';
-import helmet from 'helmet';
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet')
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes

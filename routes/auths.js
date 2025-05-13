@@ -7,7 +7,8 @@ const router = express.Router();
 const { saveToken } = require('../tokenStore');
 const { sendNotificationToUser } = require('../notifications');
 const { googleAuth } = require('./google-auth');
-import { body, validationResult } from 'express-validator';
+const body = require('express-validator').body;
+const validationResult = require('express-validator').validationResult;
 
 
 const JWT_SECRET = process.env.JWT_SECRET;

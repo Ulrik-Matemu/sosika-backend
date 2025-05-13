@@ -17,9 +17,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 router.post(
     '/register',
     [
-      body('fullName').notEmpty().withMessage('Full name is required'),
       body('email').isEmail().withMessage('Valid email is required'),
-      body('collegeId').notEmpty().withMessage('College ID is required'),
       body('password')
         .isLength({ min: 6 })
         .withMessage('Password must be at least 6 characters long'),
@@ -30,7 +28,7 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
   
-      const { fullName, email, phoneNumber, collegeId, password } = req.body;
+      const {  email, phoneNumber,  password } = req.body;
   
       try {
         const existingUser = await pool.query(
@@ -45,9 +43,9 @@ router.post(
   
         const result = await pool.query(
           `INSERT INTO "user" (full_name, email, phone_number, college_id, college_registration_number, custom_address, password)
-           VALUES ($1, $2, $3, $4, 'ADD_TO_BE_VERIFIED', point(0,0), $5)
+           VALUES ('Not Provided', $2, $3, 1, 'ADD_TO_BE_VERIFIED', point(0,0), $5)
            RETURNING *`,
-          [fullName, email, phoneNumber, collegeId, hashedPassword]
+          [ email, phoneNumber, hashedPassword]
         );
   
         res.status(201).json({

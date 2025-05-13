@@ -63,10 +63,13 @@ router.post(
         [email, phoneNumber, hashedPassword]
       );
 
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
+
 
       res.status(201).json({
         message: 'User registered successfully',
         user: result.rows[0],
+        token
       });
     } catch (err) {
       console.error(err);

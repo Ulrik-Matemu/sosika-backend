@@ -51,6 +51,7 @@ const menuItemRouter = require('./routes/menuItems');
 const deliveryPersonRouter = require('./routes/deliveryPerson');
 const ordersRouter = require("./routes/orders");
 const orderMenuItemsRouter = require("./routes/orderMenuItems");
+const aiRecommendationRouter = require("./routes/aiReccomendationRoutes");
 
 app.use(cors({
     origin: [
@@ -128,6 +129,7 @@ app.use('/api/', menuItemRouter);
 app.use('/api/', deliveryPersonRouter);
 app.use("/api/", ordersRouter);
 app.use("/api/", orderMenuItemsRouter);
+app.use("/api/", aiRecommendationRouter);
 
 
 

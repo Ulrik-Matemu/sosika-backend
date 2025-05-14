@@ -217,16 +217,7 @@ INSTRUCTIONS:
    }
 
 IMPORTANT: Only recommend an item that appears in the AVAILABLE_ITEMS_JSON array. Do not invent new items.
-Respond ONLY with a valid JSON object in this format:
-{
-  "recommendedItemId": "...",
-  "recommendedItemName": "...",
-  "vendorId": "...",
-  "vendorName": "...",
-  "price": 0,
-  "confidence": 0.85,
-  "reasoning": "..."
-}
+
 
 `;
 }

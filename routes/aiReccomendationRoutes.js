@@ -5,12 +5,23 @@ const { prepareDataForGemini, getRecommendation } = require('../services/geminiS
 const db = require('../db');
 
 /**
- * GET /api/recommendations/one-tap
+ * GET /api/recommendations/one-tap/:userId
  * Get AI-powered meal recommendation based on user history
  */
-router.get('/one-tap', async (req, res) => {
+router.get('/one-tap/:userId', async (req, res) => {
     try {
-        const userId = req.params.userId; // Assuming user ID is passed as a route parameter
+        // --- MODIFIED userId EXTRACTION AND VALIDATION ---
+        const userId = parseInt(req.params.userId, 10); // Parse userId to integer
+
+        // Input validation for userId
+        if (isNaN(userId)) {
+             console.error("Invalid User ID received:", req.params.userId);
+             return res.status(400).json({
+                 success: false,
+                 message: "Invalid User ID provided."
+             });
+        }
+        // --- END MODIFIED userId EXTRACTION AND VALIDATION ---
 
         // Get current datetime for context
         const now = new Date();
@@ -59,40 +70,36 @@ router.get('/one-tap', async (req, res) => {
 
         const userOrdersResult = await db.query(userOrdersQuery, [userId]);
 
-        // Get available menu items from user's preferred vendors
-        // First, find user's top vendors
+        // Get user's top vendors (still needed for prepareDataForGemini and filtering for Gemini prompt)
         const topVendorsQuery = `
-  SELECT v.id, COUNT(*) as order_count
-  FROM orders o
-  JOIN vendor v ON o.vendor_id = v.id
-  WHERE o.user_id = $1
-  GROUP BY v.id
-  ORDER BY COUNT(*) DESC
-  LIMIT 3
-`;
-
+            SELECT v.id, COUNT(*) as order_count
+            FROM orders o
+            JOIN vendor v ON o.vendor_id = v.id
+            WHERE o.user_id = $1
+            GROUP BY v.id
+            ORDER BY COUNT(*) DESC
+            LIMIT 3
+        `;
 
         const topVendorsResult = await db.query(topVendorsQuery, [userId]);
         const topVendorIds = topVendorsResult.rows.map(v => v.id);
 
-        // Get menu items from those vendors
+
+        // Get ALL available menu items to provide a pool for fallback recommendations
         const availableItemsQuery = `
-        SELECT mi.id, mi.name, mi.category, mi.price,
-               mi.vendor_id, v.name as vendor_name, mi.is_available
-        FROM menu_item mi
-        JOIN vendor v ON mi.vendor_id = v.id
-        WHERE mi.is_available = true AND v.is_open = true; -- Also ensure vendor is open
-    `;
+            SELECT mi.id, mi.name, mi.category, mi.price,
+                   mi.vendor_id, v.name as vendor_name, mi.is_available
+            FROM menu_item mi
+            JOIN vendor v ON mi.vendor_id = v.id
+            WHERE mi.is_available = true AND v.is_open = true; -- Also ensure vendor is open
+        `;
 
-    // Note: We no longer pass topVendorIds to this query
-    const availableItemsResult = await db.query(availableItemsQuery);
-    // --- END MODIFIED QUERY ---
-
+        const availableItemsResult = await db.query(availableItemsQuery);
 
         // Prepare data for Gemini
         const userData = {
             orders: userOrdersResult.rows,
-            availableItems: availableItemsResult.rows
+            availableItems: availableItemsResult.rows // This now contains ALL available items
         };
 
         const preparedData = prepareDataForGemini(userData, contextData);
@@ -106,22 +113,23 @@ router.get('/one-tap', async (req, res) => {
                 message: "Couldn't generate a recommendation at this time"
             });
         }
+
         // Extra validation - verify that the recommended item actually exists in the database
         const verifyItemQuery = `
-SELECT mi.id, mi.name, mi.price, mi.is_available, 
-       v.id as vendor_id, v.name as vendor_name, v.is_open
-FROM menu_item mi
-JOIN vendor v ON mi.vendor_id = v.id
-WHERE mi.id = $1 AND mi.is_available = true AND v.is_open = true
-`;
+            SELECT mi.id, mi.name, mi.price, mi.is_available,
+                   v.id as vendor_id, v.name as vendor_name, v.is_open
+            FROM menu_item mi
+            JOIN vendor v ON mi.vendor_id = v.id
+            WHERE mi.id = $1 AND mi.is_available = true AND v.is_open = true
+        `;
 
         const verifyResult = await db.query(verifyItemQuery, [recommendation.recommendedItemId]);
 
         if (verifyResult.rows.length === 0) {
-            // Item not found or not available, send a different response
+            console.warn(`Recommended item ID ${recommendation.recommendedItemId} failed final verification.`);
             return res.status(404).json({
                 success: false,
-                message: "The recommended item is currently unavailable"
+                message: "The recommended item is currently unavailable or vendor is closed."
             });
         }
 
@@ -132,8 +140,9 @@ WHERE mi.id = $1 AND mi.is_available = true AND v.is_open = true
         const trackingId = `rec_${Date.now()}_${userId}`;
 
         // Store the recommendation for tracking
+        // Ensure ai_recommendations table exists and user_id column type matches userId (now integer)
         await db.query(
-            `INSERT INTO ai_recommendations 
+            `INSERT INTO ai_recommendations
             (id, user_id, menu_item_id, vendor_id, confidence, reasoning, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
             [trackingId, userId, verifiedItem.id, verifiedItem.vendor_id,
@@ -143,9 +152,9 @@ WHERE mi.id = $1 AND mi.is_available = true AND v.is_open = true
         res.json({
             success: true,
             recommendation: {
-                ...recommendation,
+                ...recommendation, // Include confidence and reasoning from service
                 recommendationId: trackingId, // Add tracking ID
-                recommendedItemId: verifiedItem.id,
+                recommendedItemId: verifiedItem.id, // Use verified details
                 recommendedItemName: verifiedItem.name,
                 vendorId: verifiedItem.vendor_id,
                 vendorName: verifiedItem.vendor_name,
@@ -168,12 +177,14 @@ WHERE mi.id = $1 AND mi.is_available = true AND v.is_open = true
  */
 router.post('/feedback', async (req, res) => {
     try {
+        // Assuming user ID is available on req.user after authentication middleware
         const { recommendationId, accepted, itemOrdered } = req.body;
-        const userId = req.user.id;
+        const userId = req.user.id; // Make sure your auth middleware populates req.user.id
 
         // Store feedback for future model improvements
+        // Ensure recommendation_feedback table exists
         await db.query(
-            `INSERT INTO recommendation_feedback 
+            `INSERT INTO recommendation_feedback
        (user_id, recommendation_id, accepted, item_ordered, feedback_datetime)
        VALUES ($1, $2, $3, $4, NOW())`,
             [userId, recommendationId, accepted, itemOrdered]

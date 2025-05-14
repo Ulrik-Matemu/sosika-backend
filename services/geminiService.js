@@ -1,4 +1,20 @@
 // services/geminiService.js
+const fs = require('fs');
+const path = require('path');
+
+// Define key file path
+const keyPath = path.join(__dirname, 'google-key.json');
+const encodedKey = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64;
+
+// Write key file if it doesn't exist
+if (!fs.existsSync(keyPath)) {
+  fs.writeFileSync(keyPath, Buffer.from(encodedKey, 'base64').toString('utf-8'));
+}
+
+// Set this before loading genAI
+process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
+
+
 const { GoogleGenAI } = require("@google/genai");
 
 // Initialize Gemini API

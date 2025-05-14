@@ -217,6 +217,17 @@ INSTRUCTIONS:
    }
 
 IMPORTANT: Only recommend an item that appears in the AVAILABLE_ITEMS_JSON array. Do not invent new items.
+Respond ONLY with a valid JSON object in this format:
+{
+  "recommendedItemId": "...",
+  "recommendedItemName": "...",
+  "vendorId": "...",
+  "vendorName": "...",
+  "price": 0,
+  "confidence": 0.85,
+  "reasoning": "..."
+}
+
 `;
 }
 
@@ -238,7 +249,7 @@ async function getRecommendation(data) {
       contents: prompt,          // Prompt content
     });
     const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
+    console.log("Gemini raw response:", responseText);
     if (!responseText) {
       console.error("Empty response from Gemini model");
       return null;

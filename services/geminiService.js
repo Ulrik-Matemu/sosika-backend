@@ -213,10 +213,13 @@ async function getRecommendation(data) {
     const prompt = generateGeminiPrompt(data);
 
     // ✅ Create model instance properly
-    const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
+    // const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
 
     // ✅ Call generateContent on the model
-    const result = await model.generateContent(prompt);
+    const result = await genAI.models.generateContent({
+      model: "gemini-1.5-flash", // Model name
+      contents: prompt,          // Prompt content
+    });
     const responseText = await result.response.text();
 
     // 🔍 Extract JSON from response

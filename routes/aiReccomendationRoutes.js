@@ -1,6 +1,7 @@
 // routes/aiRecommendationRoutes.js
 const express = require('express');
 const router = express.Router();
+const { v4: uuidv4 } = require('uuid'); // Import uuid library
 const { prepareDataForGemini, getRecommendation } = require('../services/geminiService');
 const db = require('../db');
 
@@ -8,20 +9,31 @@ const db = require('../db');
  * GET /api/recommendations/one-tap/:userId
  * Get AI-powered meal recommendation based on user history
  */
+// Assuming userId parameter in route is the UUID of the user
 router.get('/one-tap/:userId', async (req, res) => {
     try {
-        // --- MODIFIED userId EXTRACTION AND VALIDATION ---
-        const userId = parseInt(req.params.userId, 10); // Parse userId to integer
+        // --- MODIFIED userId EXTRACTION AND VALIDATION (assuming UUID string) ---
+        const userId = req.params.userId; // Expecting a UUID string from the route parameter
 
-        // Input validation for userId
-        if (isNaN(userId)) {
-             console.error("Invalid User ID received:", req.params.userId);
+        // Basic validation for userId (can add more robust UUID format validation)
+        if (!userId) {
+             console.error("User ID is missing from route parameters.");
              return res.status(400).json({
                  success: false,
-                 message: "Invalid User ID provided."
+                 message: "User ID is required."
              });
         }
+        // You might want to add a regex check here to ensure userId is a valid UUID format
+        // const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        // if (!uuidRegex.test(userId)) {
+        //     console.error("Invalid User ID format (expected UUID):", userId);
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: "Invalid User ID format."
+        //     });
+        // }
         // --- END MODIFIED userId EXTRACTION AND VALIDATION ---
+
 
         // Get current datetime for context
         const now = new Date();
@@ -44,6 +56,7 @@ router.get('/one-tap/:userId', async (req, res) => {
         };
 
         // Get user's order history with items
+        // NOTE: This query assumes user_id in 'orders' table is compatible with the userId variable (which is now assumed to be a UUID string)
         const userOrdersQuery = `
       SELECT o.id, o.order_datetime, o.total_amount, o.vendor_rating, o.vendor_id,
              v.name as vendor_name,
@@ -71,6 +84,7 @@ router.get('/one-tap/:userId', async (req, res) => {
         const userOrdersResult = await db.query(userOrdersQuery, [userId]);
 
         // Get user's top vendors (still needed for prepareDataForGemini and filtering for Gemini prompt)
+        // NOTE: This query assumes user_id in 'orders' table is compatible with the userId variable (UUID string)
         const topVendorsQuery = `
             SELECT v.id, COUNT(*) as order_count
             FROM orders o
@@ -82,10 +96,14 @@ router.get('/one-tap/:userId', async (req, res) => {
         `;
 
         const topVendorsResult = await db.query(topVendorsQuery, [userId]);
+        // NOTE: topVendorIds will be an array of vendor IDs. Their type depends on the 'vendor' table's id column.
+        // If 'vendor.id' is integer (from migration.sql), topVendorIds will be integers.
+        // If 'vendor.id' is UUID (to match ai_recommendations), topVendorIds will be UUIDs.
         const topVendorIds = topVendorsResult.rows.map(v => v.id);
 
 
         // Get ALL available menu items to provide a pool for fallback recommendations
+        // NOTE: This query assumes menu_item.vendor_id and vendor.id are compatible.
         const availableItemsQuery = `
             SELECT mi.id, mi.name, mi.category, mi.price,
                    mi.vendor_id, v.name as vendor_name, mi.is_available
@@ -95,6 +113,10 @@ router.get('/one-tap/:userId', async (req, res) => {
         `;
 
         const availableItemsResult = await db.query(availableItemsQuery);
+        // NOTE: availableItemsResult.rows will contain item details.
+        // item.id will be the type of menu_item.id.
+        // item.vendor_id will be the type of menu_item.vendor_id.
+
 
         // Prepare data for Gemini
         const userData = {
@@ -115,6 +137,9 @@ router.get('/one-tap/:userId', async (req, res) => {
         }
 
         // Extra validation - verify that the recommended item actually exists in the database
+        // NOTE: This query assumes menu_item.id and vendor.id are compatible with
+        // recommendation.recommendedItemId and recommendation.vendorId (which come from geminiService,
+        // and in fallback cases are sourced from availableItemsResult.rows).
         const verifyItemQuery = `
             SELECT mi.id, mi.name, mi.price, mi.is_available,
                    v.id as vendor_id, v.name as vendor_name, v.is_open
@@ -136,11 +161,17 @@ router.get('/one-tap/:userId', async (req, res) => {
         // Use the verified item from database to ensure data consistency
         const verifiedItem = verifyResult.rows[0];
 
-        // Create a recommendation ID to track user feedback
-        const trackingId = `rec_${Date.now()}_${userId}`;
+        // --- MODIFIED INSERT STATEMENT ---
+        // Generate a UUID for the recommendation ID
+        const trackingId = uuidv4(); // Generate a proper UUID
 
-        // Store the recommendation for tracking
-        // Ensure ai_recommendations table exists and user_id column type matches userId (now integer)
+        // Ensure data types match the ai_recommendations table (UUIDs)
+        // This requires userId, verifiedItem.id, and verifiedItem.vendor_id to be UUIDs.
+        // Based on migration.sql, they are likely integers, creating a mismatch.
+        // For this code to work with the ai_recommendations UUID schema,
+        // the other tables MUST also use UUIDs for their IDs.
+        // Assuming they do, the values from query results (verifiedItem.id, verifiedItem.vendor_id)
+        // and the userId from route parameter should already be UUIDs.
         await db.query(
             `INSERT INTO ai_recommendations
             (id, user_id, menu_item_id, vendor_id, confidence, reasoning, created_at)
@@ -148,15 +179,17 @@ router.get('/one-tap/:userId', async (req, res) => {
             [trackingId, userId, verifiedItem.id, verifiedItem.vendor_id,
                 recommendation.confidence, recommendation.reasoning]
         );
+        // --- END MODIFIED INSERT STATEMENT ---
+
 
         res.json({
             success: true,
             recommendation: {
                 ...recommendation, // Include confidence and reasoning from service
-                recommendationId: trackingId, // Add tracking ID
-                recommendedItemId: verifiedItem.id, // Use verified details
+                recommendationId: trackingId, // Add tracking ID (the generated UUID)
+                recommendedItemId: verifiedItem.id, // Use verified details (assumed UUID)
                 recommendedItemName: verifiedItem.name,
-                vendorId: verifiedItem.vendor_id,
+                vendorId: verifiedItem.vendor_id, // Use verified details (assumed UUID)
                 vendorName: verifiedItem.vendor_name,
                 price: verifiedItem.price
             }
@@ -177,17 +210,27 @@ router.get('/one-tap/:userId', async (req, res) => {
  */
 router.post('/feedback', async (req, res) => {
     try {
-        // Assuming user ID is available on req.user after authentication middleware
+        // Assuming user ID is available on req.user after authentication middleware and is a UUID
         const { recommendationId, accepted, itemOrdered } = req.body;
-        const userId = req.user.id; // Make sure your auth middleware populates req.user.id
+        const userId = req.user.id; // Make sure your auth middleware populates req.user.id with a UUID
+
+         // Basic validation for userId and recommendationId (assuming UUID strings)
+         if (!userId || !recommendationId) {
+             console.error("User ID or Recommendation ID missing for feedback.");
+             return res.status(400).json({
+                 success: false,
+                 message: "User ID and Recommendation ID are required for feedback."
+             });
+         }
+        // Add UUID format validation if needed
 
         // Store feedback for future model improvements
-        // Ensure recommendation_feedback table exists
+        // Ensure recommendation_feedback table exists and user_id, recommendation_id are compatible with UUIDs
         await db.query(
             `INSERT INTO recommendation_feedback
        (user_id, recommendation_id, accepted, item_ordered, feedback_datetime)
        VALUES ($1, $2, $3, $4, NOW())`,
-            [userId, recommendationId, accepted, itemOrdered]
+            [userId, recommendationId, accepted, itemOrdered] // Assuming userId and recommendationId are UUIDs
         );
 
         res.json({ success: true, message: 'Feedback recorded successfully' });

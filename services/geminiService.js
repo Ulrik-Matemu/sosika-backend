@@ -231,63 +231,159 @@ async function getRecommendation(data) {
   try {
     const prompt = generateGeminiPrompt(data);
 
-    // ✅ Create model instance properly
-    // const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
-
-    // ✅ Call generateContent on the model
     const result = await genAI.models.generateContent({
       model: "gemini-1.5-flash", // Model name
       contents: prompt,          // Prompt content
     });
     const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
     console.log("Gemini raw response:", responseText);
+
     if (!responseText) {
       console.error("Empty response from Gemini model");
-      return null;
-    }
-
-    // 🔍 Extract JSON from response
-    let recommendation;
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      recommendation = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-
-      if (!recommendation || !recommendation.recommendedItemId) {
-        throw new Error("Invalid recommendation format");
-      }
-      const topVendors = data.userPreferences.frequentVendors.slice(0, 3).map(v => v.vendorId);
-      const relevantItems = data.availableItems
-        .filter(item => topVendors.includes(item.vendorId))
-        .slice(0, 20);
-      
-      // Check if the recommended item exists in our available items
-      const recommendedItem = relevantItems.find(item => item.id === recommendation.recommendedItemId);
-      
-      if (!recommendedItem) {
-        console.warn("Gemini recommended an item that doesn't exist in available items list:", recommendation.recommendedItemId);
-        
-        // If invalid, pick a random item from the available items as fallback
-        const fallbackItem = relevantItems[Math.floor(Math.random() * relevantItems.length)];
-        
-        recommendation = {
+      // Fallback to random if Gemini provides empty response
+      if (data.availableItems && data.availableItems.length > 0) {
+        console.log("Falling back to random item due to empty Gemini response.");
+        const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
+        return {
           recommendedItemId: fallbackItem.id,
           recommendedItemName: fallbackItem.name,
           vendorId: fallbackItem.vendorId,
           vendorName: fallbackItem.vendorName,
           price: fallbackItem.price,
-          confidence: 0.5, // Lower confidence for fallback items
-          reasoning: "Based on your previous orders, you might enjoy this."
+          confidence: 0.3, // Even lower confidence for a random fallback
+          reasoning: "No specific recommendation could be generated, here is a random item available."
         };
       }
+      return null; // No items available at all for fallback
+    }
+
+    let recommendation;
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      recommendation = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+
+      // --- Start of Modified Logic ---
+
+      // Check if Gemini explicitly stated no items are available from preferred vendors
+      if (recommendation && recommendation.recommendedItemId === null &&
+          recommendation.reasoning === "There are no items available from the user's preferred vendors.") {
+          console.warn("Gemini indicated no items available from preferred vendors. Falling back to random item.");
+          // Fallback to random item from *all* available items
+          if (data.availableItems && data.availableItems.length > 0) {
+            const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
+            return {
+              recommendedItemId: fallbackItem.id,
+              recommendedItemName: fallbackItem.name,
+              vendorId: fallbackItem.vendorId,
+              vendorName: fallbackItem.vendorName,
+              price: fallbackItem.price,
+              confidence: 0.4, // Low confidence for this specific fallback
+              reasoning: "No relevant items found from your preferred vendors. Here is another available item."
+            };
+          } else {
+             console.warn("Gemini indicated no items, and no available items were provided in data.");
+             return null; // No items available at all for fallback
+          }
+      }
+
+      // If recommendationItemId is null for other reasons or JSON is invalid
+      if (!recommendation || !recommendation.recommendedItemId) {
+        // This will catch true parsing errors or unexpected null recommendedItemId
+        throw new Error("Invalid or incomplete recommendation format from Gemini");
+      }
+
+      // --- End of Modified Logic ---
+
+      // Filter available items to only those from top 3 vendors (up to 20)
+      const topVendors = data.userPreferences.frequentVendors.slice(0, 3).map(v => v.vendorId);
+      const relevantItems = data.availableItems
+        .filter(item => topVendors.includes(item.vendorId))
+        .slice(0, 20);
+
+      // Check if the recommended item exists in our filtered relevant items
+      const recommendedItem = relevantItems.find(item => item.id === recommendation.recommendedItemId);
+
+      if (!recommendedItem) {
+        console.warn("Gemini recommended an item that doesn't exist in the filtered available items list:", recommendation.recommendedItemId);
+
+        // If the item recommended by Gemini is not in the *filtered* list,
+        // pick a random item from the *filtered* relevant items as fallback.
+        // This handles cases where Gemini might hallucinate an ID or recommend
+        // an item from a less frequent vendor.
+        if (relevantItems.length > 0) {
+            console.log("Falling back to random item from relevant vendors.");
+            const fallbackItem = relevantItems[Math.floor(Math.random() * relevantItems.length)];
+
+            // Note: You might want to merge Gemini's original reasoning if it was useful
+            const fallbackReasoning = recommendation.reasoning && recommendation.reasoning !== "There are no items available from the user's preferred vendors."
+                ? `Gemini suggested related item (ID ${recommendation.recommendedItemId}). Based on your preferred vendors, you might enjoy this.`
+                : "Based on your previous orders from preferred vendors, you might enjoy this.";
+
+            recommendation = {
+              recommendedItemId: fallbackItem.id,
+              recommendedItemName: fallbackItem.name,
+              vendorId: fallbackItem.vendorId,
+              vendorName: fallbackItem.vendorName,
+              price: fallbackItem.price,
+              confidence: 0.5, // Mid-range confidence for this fallback
+              reasoning: fallbackReasoning
+            };
+        } else {
+             console.warn("Gemini recommended an item not in filtered list, but filtered list is empty.");
+             return null; // No relevant items at all for this fallback
+        }
+      } else {
+        // If the item was found in the filtered list, update the recommendation object
+        // with potentially more accurate details from our internal data.
+         console.log("Gemini recommended item found in relevant items.");
+         recommendation = {
+            recommendedItemId: recommendedItem.id,
+            recommendedItemName: recommendedItem.name,
+            vendorId: recommendedItem.vendorId,
+            vendorName: recommendedItem.vendorName,
+            price: recommendedItem.price,
+            confidence: recommendation.confidence || 0.7, // Use Gemini's confidence or a default high confidence
+            reasoning: recommendation.reasoning || "A top recommendation based on your history." // Use Gemini's reasoning or a default
+         };
+      }
+
     } catch (parseError) {
-      console.error("Failed to parse Gemini response:", parseError);
-      return null;
+      console.error("Failed to parse or process Gemini response:", parseError);
+      // Catch parsing errors and fall back to random item if available
+       if (data.availableItems && data.availableItems.length > 0) {
+          console.log("Falling back to random item due to parsing error.");
+          const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
+          return {
+            recommendedItemId: fallbackItem.id,
+            recommendedItemName: fallbackItem.name,
+            vendorId: fallbackItem.vendorId,
+            vendorName: fallbackItem.vendorName,
+            price: fallbackItem.price,
+            confidence: 0.3, // Lower confidence for a parsing error fallback
+            reasoning: "Could not process recommendation. Here is a random item available."
+          };
+        }
+      return null; // No items available at all for fallback
     }
 
     return recommendation;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    return null;
+     // Catch API call errors and fall back to random item if available
+     if (data.availableItems && data.availableItems.length > 0) {
+        console.log("Falling back to random item due to API error.");
+        const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
+        return {
+          recommendedItemId: fallbackItem.id,
+          recommendedItemName: fallbackItem.name,
+          vendorId: fallbackItem.vendorId,
+          vendorName: fallbackItem.vendorName,
+          price: fallbackItem.price,
+          confidence: 0.3, // Lower confidence for an API error fallback
+          reasoning: "Recommendation service is temporarily unavailable. Here is a random item available."
+        };
+      }
+    return null; // No items available at all for fallback
   }
 }
 

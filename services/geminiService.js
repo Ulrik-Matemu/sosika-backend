@@ -3,7 +3,7 @@ const { GoogleGenAI } = require("@google/genai");
 
 // Initialize Gemini API
 const genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY });
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 /**
  * Prepares user order history data for Gemini analysis
@@ -195,7 +195,10 @@ INSTRUCTIONS:
 async function getRecommendation(data) {
   try {
     const prompt = generateGeminiPrompt(data);
-    const result = await model.generateContent(prompt);
+    const result = await genAI.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: prompt,
+    });
     const responseText = result.response.text();
     
     // Extract JSON from response

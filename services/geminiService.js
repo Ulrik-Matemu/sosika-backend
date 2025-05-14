@@ -240,9 +240,9 @@ async function getRecommendation(data) {
 
     if (!responseText) {
       console.error("Empty response from Gemini model");
-      // Fallback to random if Gemini provides empty response
+      // Fallback to random if Gemini provides empty response AND available items exist
       if (data.availableItems && data.availableItems.length > 0) {
-        console.log("Falling back to random item due to empty Gemini response.");
+        console.log("Falling back to random item due to empty Gemini response. Using data.availableItems.");
         const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
         return {
           recommendedItemId: fallbackItem.id,
@@ -254,6 +254,7 @@ async function getRecommendation(data) {
           reasoning: "No specific recommendation could be generated, here is a random item available."
         };
       }
+      console.warn("Empty Gemini response and no available items provided in data. Cannot perform fallback.");
       return null; // No items available at all for fallback
     }
 
@@ -262,14 +263,16 @@ async function getRecommendation(data) {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       recommendation = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
 
-      // --- Start of Modified Logic ---
-
       // Check if Gemini explicitly stated no items are available from preferred vendors
+      // Use a more flexible check for reasoning text
       if (recommendation && recommendation.recommendedItemId === null &&
-          recommendation.reasoning === "There are no items available from the user's preferred vendors.") {
-          console.warn("Gemini indicated no items available from preferred vendors. Falling back to random item.");
-          // Fallback to random item from *all* available items
+          recommendation.reasoning && typeof recommendation.reasoning === 'string' &&
+          recommendation.reasoning.toLowerCase().includes("no items available from")) {
+          console.warn("Gemini indicated no items available from preferred vendors based on reasoning. Attempting fallback.");
+
+          // Fallback to random item from *all* available items provided in the data
           if (data.availableItems && data.availableItems.length > 0) {
+            console.log("Attempting random fallback from data.availableItems.");
             const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
             return {
               recommendedItemId: fallbackItem.id,
@@ -281,20 +284,38 @@ async function getRecommendation(data) {
               reasoning: "No relevant items found from your preferred vendors. Here is another available item."
             };
           } else {
-             console.warn("Gemini indicated no items, and no available items were provided in data.");
-             return null; // No items available at all for fallback
+             console.warn("Gemini indicated no items, and no available items were provided in data. Cannot perform random fallback within the provided data.");
+             return null; // No items available at all for fallback within the provided data
           }
       }
 
-      // If recommendationItemId is null for other reasons or JSON is invalid
+      // If recommendation is null, or recommendedItemId is null for reasons
+      // *other* than the specific "no items available" reasoning handled above,
+      // or if the JSON structure is unexpected.
       if (!recommendation || !recommendation.recommendedItemId) {
-        // This will catch true parsing errors or unexpected null recommendedItemId
-        throw new Error("Invalid or incomplete recommendation format from Gemini");
+          console.error("Invalid or incomplete recommendation format from Gemini:", recommendation);
+          // Fallback to random if Gemini provides invalid/incomplete format AND available items exist
+          if (data.availableItems && data.availableItems.length > 0) {
+              console.log("Falling back to random item due to invalid/incomplete Gemini format. Using data.availableItems.");
+              const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
+              return {
+                  recommendedItemId: fallbackItem.id,
+                  recommendedItemName: fallbackItem.name,
+                  vendorId: fallbackItem.vendorId,
+                  vendorName: fallbackItem.vendorName,
+                  price: fallbackItem.price,
+                  confidence: 0.3, // Lower confidence for this fallback
+                  reasoning: "Could not process recommendation format. Here is a random item available."
+              };
+          }
+          console.warn("Invalid/incomplete Gemini format and no available items provided in data. Cannot perform fallback.");
+          return null; // No items available for fallback
       }
 
-      // --- End of Modified Logic ---
+      // If we reach here, Gemini provided a recommendation with a recommendedItemId.
+      // Now, check if this recommended item exists in our filtered list from relevant vendors.
 
-      // Filter available items to only those from top 3 vendors (up to 20)
+      // Filter available items to only those from top 3 vendors (up to 20), as done before sending to Gemini
       const topVendors = data.userPreferences.frequentVendors.slice(0, 3).map(v => v.vendorId);
       const relevantItems = data.availableItems
         .filter(item => topVendors.includes(item.vendorId))
@@ -304,19 +325,18 @@ async function getRecommendation(data) {
       const recommendedItem = relevantItems.find(item => item.id === recommendation.recommendedItemId);
 
       if (!recommendedItem) {
-        console.warn("Gemini recommended an item that doesn't exist in the filtered available items list:", recommendation.recommendedItemId);
+        console.warn(`Gemini recommended item ID ${recommendation.recommendedItemId} which doesn't exist in the filtered relevant items list.`);
 
         // If the item recommended by Gemini is not in the *filtered* list,
         // pick a random item from the *filtered* relevant items as fallback.
         // This handles cases where Gemini might hallucinate an ID or recommend
-        // an item from a less frequent vendor.
+        // an item from a less frequent vendor that didn't make the top 3/limit.
         if (relevantItems.length > 0) {
-            console.log("Falling back to random item from relevant vendors.");
+            console.log("Falling back to random item from relevant vendors due to Gemini's recommended item not being in the filtered list.");
             const fallbackItem = relevantItems[Math.floor(Math.random() * relevantItems.length)];
 
-            // Note: You might want to merge Gemini's original reasoning if it was useful
-            const fallbackReasoning = recommendation.reasoning && recommendation.reasoning !== "There are no items available from the user's preferred vendors."
-                ? `Gemini suggested related item (ID ${recommendation.recommendedItemId}). Based on your preferred vendors, you might enjoy this.`
+            const fallbackReasoning = recommendation.reasoning && typeof recommendation.reasoning === 'string' && !recommendation.reasoning.toLowerCase().includes("no items available from")
+                ? `Gemini suggested a related idea (ID ${recommendation.recommendedItemId}), but based on your preferred vendors, you might enjoy this.`
                 : "Based on your previous orders from preferred vendors, you might enjoy this.";
 
             recommendation = {
@@ -329,13 +349,20 @@ async function getRecommendation(data) {
               reasoning: fallbackReasoning
             };
         } else {
-             console.warn("Gemini recommended an item not in filtered list, but filtered list is empty.");
-             return null; // No relevant items at all for this fallback
+             // If relevantItems is also empty at this point, it means even if
+             // data.availableItems had items, none were from the top 3 vendors.
+             // The initial fallback should have caught the "no items available"
+             // case if data.availableItems was empty from the start.
+             // This scenario is less likely if data.availableItems was initially populated,
+             // but we'll log it.
+             console.warn("Gemini recommended item not in filtered list, and filtered list is empty. Cannot perform fallback from relevant items.");
+             // No fallback possible within the scope of relevantItems. The initial fallback
+             // from data.availableItems would have been the last chance if available.
+             return null;
         }
       } else {
-        // If the item was found in the filtered list, update the recommendation object
-        // with potentially more accurate details from our internal data.
-         console.log("Gemini recommended item found in relevant items.");
+        // If the item was found in the filtered list, use its details and Gemini's confidence/reasoning
+         console.log("Gemini recommended item found and verified in relevant items.");
          recommendation = {
             recommendedItemId: recommendedItem.id,
             recommendedItemName: recommendedItem.name,
@@ -348,10 +375,10 @@ async function getRecommendation(data) {
       }
 
     } catch (parseError) {
-      console.error("Failed to parse or process Gemini response:", parseError);
-      // Catch parsing errors and fall back to random item if available
+      console.error("Failed to parse Gemini response:", parseError);
+      // Fallback to random if there's a parsing error AND available items exist
        if (data.availableItems && data.availableItems.length > 0) {
-          console.log("Falling back to random item due to parsing error.");
+          console.log("Falling back to random item due to parsing error. Using data.availableItems.");
           const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
           return {
             recommendedItemId: fallbackItem.id,
@@ -363,15 +390,16 @@ async function getRecommendation(data) {
             reasoning: "Could not process recommendation. Here is a random item available."
           };
         }
+      console.warn("Parsing error and no available items provided in data. Cannot perform fallback.");
       return null; // No items available at all for fallback
     }
 
     return recommendation;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-     // Catch API call errors and fall back to random item if available
+     // Fallback to random if there's an API error AND available items exist
      if (data.availableItems && data.availableItems.length > 0) {
-        console.log("Falling back to random item due to API error.");
+        console.log("Falling back to random item due to API error. Using data.availableItems.");
         const fallbackItem = data.availableItems[Math.floor(Math.random() * data.availableItems.length)];
         return {
           recommendedItemId: fallbackItem.id,
@@ -383,6 +411,7 @@ async function getRecommendation(data) {
           reasoning: "Recommendation service is temporarily unavailable. Here is a random item available."
         };
       }
+    console.warn("Gemini API error and no available items provided in data. Cannot perform fallback.");
     return null; // No items available at all for fallback
   }
 }

@@ -10,7 +10,7 @@ const db = require('../db');
  */
 router.get('/one-tap', async (req, res) => {
   try {
-    const userId = req.user.id; // Assuming user ID is available from auth middleware
+    const userId = req.params.userId; // Assuming user ID is passed as a route parameter
     
     // Get current datetime for context
     const now = new Date();

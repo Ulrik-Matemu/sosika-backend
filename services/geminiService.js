@@ -220,7 +220,12 @@ async function getRecommendation(data) {
       model: "gemini-1.5-flash", // Model name
       contents: prompt,          // Prompt content
     });
-    const responseText = await result.response.text();
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!responseText) {
+      console.error("Empty response from Gemini model");
+      return null;
+    }
 
     // 🔍 Extract JSON from response
     let recommendation;

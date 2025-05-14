@@ -77,11 +77,11 @@ router.get('/one-tap', async (req, res) => {
 
         // Get menu items from those vendors
         const availableItemsQuery = `
-        SELECT mi.id, mi.name, mi.category, mi.price, 
-               mi.vendor_id, v.name as vendor_name, mi.is_available
-        FROM menu_item mi
-        JOIN vendor v ON mi.vendor_id = v.id
-        WHERE mi.vendor_id = ANY($1::int[]) AND mi.is_available = true
+         SELECT mi.id, mi.name, mi.category, mi.price, 
+         mi.vendor_id, v.name as vendor_name, mi.is_available
+  FROM menu_item mi
+  JOIN vendor v ON mi.vendor_id = v.id
+  WHERE mi.vendor_id = ANY($1::int[]) AND mi.is_available = true;
       `;
       
 

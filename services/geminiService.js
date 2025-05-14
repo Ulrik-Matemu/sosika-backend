@@ -211,19 +211,20 @@ INSTRUCTIONS:
 async function getRecommendation(data) {
   try {
     const prompt = generateGeminiPrompt(data);
-    const result = await genAI.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: prompt,
-    });
-    const responseText = result.response.text();
-    
-    // Extract JSON from response
+
+    // ✅ Create model instance properly
+    const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
+
+    // ✅ Call generateContent on the model
+    const result = await model.generateContent(prompt);
+    const responseText = await result.response.text();
+
+    // 🔍 Extract JSON from response
     let recommendation;
     try {
-      // Find JSON object in response text (handle cases where model might include extra text)
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       recommendation = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-      
+
       if (!recommendation || !recommendation.recommendedItemId) {
         throw new Error("Invalid recommendation format");
       }
@@ -231,13 +232,14 @@ async function getRecommendation(data) {
       console.error("Failed to parse Gemini response:", parseError);
       return null;
     }
-    
+
     return recommendation;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     return null;
   }
 }
+
 
 module.exports = {
   prepareDataForGemini,

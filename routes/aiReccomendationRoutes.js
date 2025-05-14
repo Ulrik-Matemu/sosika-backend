@@ -103,10 +103,51 @@ router.get('/one-tap', async (req, res) => {
                 message: "Couldn't generate a recommendation at this time"
             });
         }
+        // Extra validation - verify that the recommended item actually exists in the database
+        const verifyItemQuery = `
+SELECT mi.id, mi.name, mi.price, mi.is_available, 
+       v.id as vendor_id, v.name as vendor_name, v.is_open
+FROM menu_item mi
+JOIN vendor v ON mi.vendor_id = v.id
+WHERE mi.id = $1 AND mi.is_available = true AND v.is_open = true
+`;
+
+        const verifyResult = await db.query(verifyItemQuery, [recommendation.recommendedItemId]);
+
+        if (verifyResult.rows.length === 0) {
+            // Item not found or not available, send a different response
+            return res.status(404).json({
+                success: false,
+                message: "The recommended item is currently unavailable"
+            });
+        }
+
+        // Use the verified item from database to ensure data consistency
+        const verifiedItem = verifyResult.rows[0];
+
+        // Create a recommendation ID to track user feedback
+        const trackingId = `rec_${Date.now()}_${userId}`;
+
+        // Store the recommendation for tracking
+        await db.query(
+            `INSERT INTO ai_recommendations 
+            (id, user_id, menu_item_id, vendor_id, confidence, reasoning, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+            [trackingId, userId, verifiedItem.id, verifiedItem.vendor_id,
+                recommendation.confidence, recommendation.reasoning]
+        );
 
         res.json({
             success: true,
-            recommendation
+            recommendation: {
+                ...recommendation,
+                recommendationId: trackingId, // Add tracking ID
+                recommendedItemId: verifiedItem.id,
+                recommendedItemName: verifiedItem.name,
+                vendorId: verifiedItem.vendor_id,
+                vendorName: verifiedItem.vendor_name,
+                price: verifiedItem.price
+            }
         });
     } catch (error) {
         console.error('Error generating AI recommendation:', error);

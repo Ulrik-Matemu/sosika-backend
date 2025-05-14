@@ -166,8 +166,19 @@ function generateGeminiPrompt(data) {
     .filter(item => topVendors.includes(item.vendorId))
     .slice(0, 20); // Limit to 20 items to keep prompt size reasonable
   
+  // Create a JSON representation of available items with all necessary fields
+  const availableItemsJSON = JSON.stringify(relevantItems.map(item => ({
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    price: item.price,
+    vendorId: item.vendorId,
+    vendorName: item.vendorName
+  })));
+  
+  // Create a readable list for context
   const availableItemsList = relevantItems.map(item => 
-    `- ${item.name} (${item.category}) from ${item.vendorName} - $${item.price}`
+    `- [ID: ${item.id}] ${item.name} (${item.category}) from ${item.vendorName} - ${item.price}`
   ).join("\n");
 
   return `
@@ -186,20 +197,26 @@ ANALYSIS:
 - User typically orders during: ${userPreferences.timePatterns.preferredTimeOfDay.join(", ")}
 - User's most active ordering days: ${userPreferences.timePatterns.ordersByDayOfWeek.map((count, idx) => `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][idx]}: ${count}`).join(", ")}
 
+AVAILABLE_ITEMS_JSON (these are the ONLY items you can recommend):
+${availableItemsJSON}
+
 INSTRUCTIONS:
 1. Look at what the user typically orders at this time of day and day of week
-2. Consider only items that are currently available
-3. Make a single confident recommendation with high likelihood of being what the user wants
-4. Return ONLY a JSON object with these exact keys:
+2. Consider ONLY items from the AVAILABLE_ITEMS_JSON array - these are the only valid items in the database
+3. YOU MUST pick an actual item ID from the AVAILABLE_ITEMS_JSON array, do not make up your own IDs
+4. Make a single confident recommendation with high likelihood of being what the user wants
+5. Return ONLY a JSON object with these exact keys:
    {
-     "recommendedItemId": number,
-     "recommendedItemName": string,
-     "vendorId": number,
-     "vendorName": string,
-     "price": number,
+     "recommendedItemId": number, // MUST be an actual item ID from the AVAILABLE_ITEMS_JSON list
+     "recommendedItemName": string, // MUST match the name from the AVAILABLE_ITEMS_JSON list
+     "vendorId": number, // MUST match the vendorId from the AVAILABLE_ITEMS_JSON list
+     "vendorName": string, // MUST match the vendorName from the AVAILABLE_ITEMS_JSON list
+     "price": number, // MUST match the price from the AVAILABLE_ITEMS_JSON list
      "confidence": number (between 0 and 1),
      "reasoning": string (brief explanation of why this item was chosen)
    }
+
+IMPORTANT: Only recommend an item that appears in the AVAILABLE_ITEMS_JSON array. Do not invent new items.
 `;
 }
 
@@ -235,6 +252,30 @@ async function getRecommendation(data) {
 
       if (!recommendation || !recommendation.recommendedItemId) {
         throw new Error("Invalid recommendation format");
+      }
+      const topVendors = data.userPreferences.frequentVendors.slice(0, 3).map(v => v.vendorId);
+      const relevantItems = data.availableItems
+        .filter(item => topVendors.includes(item.vendorId))
+        .slice(0, 20);
+      
+      // Check if the recommended item exists in our available items
+      const recommendedItem = relevantItems.find(item => item.id === recommendation.recommendedItemId);
+      
+      if (!recommendedItem) {
+        console.warn("Gemini recommended an item that doesn't exist in available items list:", recommendation.recommendedItemId);
+        
+        // If invalid, pick a random item from the available items as fallback
+        const fallbackItem = relevantItems[Math.floor(Math.random() * relevantItems.length)];
+        
+        recommendation = {
+          recommendedItemId: fallbackItem.id,
+          recommendedItemName: fallbackItem.name,
+          vendorId: fallbackItem.vendorId,
+          vendorName: fallbackItem.vendorName,
+          price: fallbackItem.price,
+          confidence: 0.5, // Lower confidence for fallback items
+          reasoning: "Based on your previous orders, you might enjoy this."
+        };
       }
     } catch (parseError) {
       console.error("Failed to parse Gemini response:", parseError);

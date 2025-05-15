@@ -217,13 +217,7 @@ router.post('/feedback/:userId', async (req, res) => {
       // Validate that userId and recommendationId are proper UUIDs
    
 
-    if (!isUuid(recommendationId)) {
-      console.error("Invalid UUID for recommendationId");
-      return res.status(400).json({
-        success: false,
-        message: "recommendationId must be a valid UUID"
-      });
-    }
+   
   
       await db.query(
         `INSERT INTO recommendation_feedback

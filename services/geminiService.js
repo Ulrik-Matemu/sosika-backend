@@ -253,7 +253,8 @@ async function getRecommendation(data) {
           vendorName: fallbackItem.vendorName,
           price: fallbackItem.price,
           confidence: 0.3, // Even lower confidence for a random fallback
-          reasoning: "No specific recommendation could be generated, here is a random item available."
+          reasoning: "No specific recommendation could be generated, here is a random item available.",
+          image_url: fallbackItem.image_url || null
         };
       }
       console.warn("Empty Gemini response and no available items provided in data. Cannot perform fallback.");
@@ -283,7 +284,8 @@ async function getRecommendation(data) {
               vendorName: fallbackItem.vendorName,
               price: fallbackItem.price,
               confidence: 0.4, // Low confidence for this specific fallback
-              reasoning: "No relevant items found from your preferred vendors. Here is another available item."
+              reasoning: "No relevant items found from your preferred vendors. Here is another available item.",
+              image_url: fallbackItem.image_url || null
             };
           } else {
              console.warn("Gemini indicated no items, and no available items were provided in data. Cannot perform random fallback within the provided data.");
@@ -307,7 +309,8 @@ async function getRecommendation(data) {
                   vendorName: fallbackItem.vendorName,
                   price: fallbackItem.price,
                   confidence: 0.3, // Lower confidence for this fallback
-                  reasoning: "Could not process recommendation format. Here is a random item available."
+                  reasoning: "Could not process recommendation format. Here is a random item available.",
+                  image_url: fallbackItem.image_url || null
               };
           }
           console.warn("Invalid/incomplete Gemini format and no available items provided in data. Cannot perform fallback.");
@@ -348,7 +351,8 @@ async function getRecommendation(data) {
               vendorName: fallbackItem.vendorName,
               price: fallbackItem.price,
               confidence: 0.5, // Mid-range confidence for this fallback
-              reasoning: fallbackReasoning
+              reasoning: fallbackReasoning,
+              image_url: fallbackItem.image_url || null
             };
         } else {
              // If relevantItems is also empty at this point, it means even if
@@ -372,7 +376,8 @@ async function getRecommendation(data) {
             vendorName: recommendedItem.vendorName,
             price: recommendedItem.price,
             confidence: recommendation.confidence || 0.7, // Use Gemini's confidence or a default high confidence
-            reasoning: recommendation.reasoning || "A top recommendation based on your history." // Use Gemini's reasoning or a default
+            reasoning: recommendation.reasoning || "A top recommendation based on your history.", // Use Gemini's reasoning or a default
+            image_url: recommendedItem.image_url || null // Include image URL if available
          };
       }
 
@@ -389,7 +394,8 @@ async function getRecommendation(data) {
             vendorName: fallbackItem.vendorName,
             price: fallbackItem.price,
             confidence: 0.3, // Lower confidence for a parsing error fallback
-            reasoning: "Could not process recommendation. Here is a random item available."
+            reasoning: "Could not process recommendation. Here is a random item available.",
+            image_url: fallbackItem.image_url || null
           };
         }
       console.warn("Parsing error and no available items provided in data. Cannot perform fallback.");
@@ -410,7 +416,8 @@ async function getRecommendation(data) {
           vendorName: fallbackItem.vendorName,
           price: fallbackItem.price,
           confidence: 0.3, // Lower confidence for an API error fallback
-          reasoning: "Recommendation service is temporarily unavailable. Here is a random item available."
+          reasoning: "Recommendation service is temporarily unavailable. Here is a random item available.",
+          image_url: fallbackItem.image_url || null
         };
       }
     console.warn("Gemini API error and no available items provided in data. Cannot perform fallback.");

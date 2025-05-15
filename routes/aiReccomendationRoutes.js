@@ -208,11 +208,12 @@ router.get('/one-tap/:userId', async (req, res) => {
  * POST /api/recommendations/feedback
  * Record user feedback on recommendations to improve the model
  */
-router.post('/feedback', async (req, res) => {
+router.post('/feedback/:userId', async (req, res) => {
     try {
+        const userId = req.params.userId;
         // Assuming user ID is available on req.user after authentication middleware and is a UUID
         const { recommendationId, accepted, itemOrdered } = req.body;
-        const userId = req.user.id; // Make sure your auth middleware populates req.user.id with a UUID
+    // Make sure your auth middleware populates req.user.id with a UUID
 
          // Basic validation for userId and recommendationId (assuming UUID strings)
          if (!userId || !recommendationId) {

@@ -215,13 +215,21 @@ router.post('/feedback/:userId', async (req, res) => {
       const { recommendationId, accepted, itemOrdered } = req.body;
   
       // Validate that userId and recommendationId are proper UUIDs
-      if (!isUuid(userId) || !isUuid(recommendationId)) {
-        console.error("Invalid UUID for userId or recommendationId");
-        return res.status(400).json({
-          success: false,
-          message: "Both userId and recommendationId must be valid UUIDs"
-        });
-      }
+    if (!isUuid(userId)) {
+      console.error("Invalid UUID for userId");
+      return res.status(400).json({
+        success: false,
+        message: "userId must be a valid UUID"
+      });
+    }
+
+    if (!isUuid(recommendationId)) {
+      console.error("Invalid UUID for recommendationId");
+      return res.status(400).json({
+        success: false,
+        message: "recommendationId must be a valid UUID"
+      });
+    }
   
       await db.query(
         `INSERT INTO recommendation_feedback

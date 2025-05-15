@@ -213,7 +213,7 @@ INSTRUCTIONS:
      "vendorName": string, // MUST match the vendorName from the AVAILABLE_ITEMS_JSON list
      "price": number, // MUST match the price from the AVAILABLE_ITEMS_JSON list
      "confidence": number (between 0 and 1),
-     "reasoning": string (brief explanation of why this item was chosen)
+     "reasoning": string (brief explanation of why this item was chosen, explaining to user briefly)
    }
 
 IMPORTANT: Only recommend an item that appears in the AVAILABLE_ITEMS_JSON array. Do not invent new items.

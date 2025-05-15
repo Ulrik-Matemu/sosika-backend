@@ -106,7 +106,7 @@ router.get('/one-tap/:userId', async (req, res) => {
         // Get ALL available menu items to provide a pool for fallback recommendations
         // NOTE: This query assumes menu_item.vendor_id and vendor.id are compatible.
         const availableItemsQuery = `
-            SELECT mi.id, mi.name, mi.category, mi.price,
+            SELECT mi.id, mi.name, mi.category, mi.price, mi.image_url,
                    mi.vendor_id, v.name as vendor_name, mi.is_available
             FROM menu_item mi
             JOIN vendor v ON mi.vendor_id = v.id

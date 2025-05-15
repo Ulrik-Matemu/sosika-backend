@@ -4,6 +4,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid'); // Import uuid library
 const { prepareDataForGemini, getRecommendation } = require('../services/geminiService');
 const db = require('../db');
+const { validate: isUuid } = require('uuid');
 
 /**
  * GET /api/recommendations/one-tap/:userId
@@ -210,37 +211,31 @@ router.get('/one-tap/:userId', async (req, res) => {
  */
 router.post('/feedback/:userId', async (req, res) => {
     try {
-       let userId2 = req.params.userId;
-      const userId = new uuidv4(); // Convert to UUID
-        // Assuming user ID is available on req.user after authentication middleware and is a UUID
-        const { recommendationId, accepted, itemOrdered } = req.body;
-    // Make sure your auth middleware populates req.user.id with a UUID
-
-         // Basic validation for userId and recommendationId (assuming UUID strings)
-         if (!userId || !recommendationId) {
-             console.error("User ID or Recommendation ID missing for feedback.");
-             return res.status(400).json({
-                 success: false,
-                 message: "User ID and Recommendation ID are required for feedback."
-             });
-         }
-        // Add UUID format validation if needed
-        
-
-        // Store feedback for future model improvements
-        // Ensure recommendation_feedback table exists and user_id, recommendation_id are compatible with UUIDs
-        await db.query(
-            `INSERT INTO recommendation_feedback
-       (user_id, recommendation_id, accepted, item_ordered, feedback_datetime)
-       VALUES ($1, $2, $3, $4, NOW())`,
-            [userId, recommendationId, accepted, itemOrdered] // Assuming userId and recommendationId are UUIDs
-        );
-
-        res.json({ success: true, message: 'Feedback recorded successfully' });
+      const userId = req.params.userId;
+      const { recommendationId, accepted, itemOrdered } = req.body;
+  
+      // Validate that userId and recommendationId are proper UUIDs
+      if (!isUuid(userId) || !isUuid(recommendationId)) {
+        console.error("Invalid UUID for userId or recommendationId");
+        return res.status(400).json({
+          success: false,
+          message: "Both userId and recommendationId must be valid UUIDs"
+        });
+      }
+  
+      await db.query(
+        `INSERT INTO recommendation_feedback
+          (user_id, recommendation_id, accepted, item_ordered, feedback_datetime)
+          VALUES ($1, $2, $3, $4, NOW())`,
+        [userId, recommendationId, accepted, itemOrdered]
+      );
+  
+      res.json({ success: true, message: 'Feedback recorded successfully' });
+  
     } catch (error) {
-        console.error('Error recording recommendation feedback:', error);
-        res.status(500).json({ success: false, message: 'Failed to record feedback' });
+      console.error('Error recording recommendation feedback:', error);
+      res.status(500).json({ success: false, message: 'Failed to record feedback' });
     }
-});
+  });
 
 module.exports = router;

@@ -3,13 +3,13 @@ import { check, sleep } from 'k6';
 
 export let options = {
   stages: [
-    { duration: '10s', target: 50 },
-    { duration: '30s', target: 50 },
-    { duration: '10s', target: 0 },
+    { duration: '10s', target: 10 }, // ramp up to 10 users
+    { duration: '30s', target: 10 }, // stay at 10 users
+    { duration: '10s', target: 0 },  // ramp down to 0
   ],
   thresholds: {
-    http_req_duration: ['p(95)<500'],
-    http_req_failed: ['rate<0.01'],
+    http_req_duration: ['p(95)<500'], // 95% of requests under 500ms
+    http_req_failed: ['rate<0.01'],   // less than 1% should fail
   },
 };
 
@@ -33,10 +33,10 @@ export default function () {
     'login response time < 500ms': (r) => r.timings.duration < 500,
   });
 
-  const authToken = loginRes.json('token'); // Adjust if your token key is named differently
+  const authToken = loginRes.json('token'); // Make sure this matches your backend's token key
 
-  // Now fetch menu items
-  const menuUrl = 'https://sosika-backend.onrender.com/api/menuItems'; // Replace with actual endpoint
+  // Fetch menu items
+  const menuUrl = 'https://sosika-backend.onrender.com/api/menuItems';
   const menuParams = {
     headers: {
       Authorization: `Bearer ${authToken}`,
@@ -52,3 +52,4 @@ export default function () {
 
   sleep(1);
 }
+

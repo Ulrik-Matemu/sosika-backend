@@ -29,6 +29,7 @@ router.post(
     }
 
     const { email, phoneNumber, password } = req.body;
+    const referredBy = parseInt(req.query.ref) || 0; // 👈 get from query string
 
     try {
       const existingUser = await pool.query(
@@ -37,6 +38,17 @@ router.post(
       );
       if (existingUser.rows.length > 0) {
         return res.status(400).json({ error: 'Email already exists' });
+      }
+
+      // Optional: Validate that the referral ID exists
+      if (referredBy !== 0) {
+        const refCheck = await pool.query(
+          'SELECT id FROM "user" WHERE id = $1',
+          [referredBy]
+        );
+        if (refCheck.rows.length === 0) {
+          return res.status(400).json({ error: 'Invalid referral code' });
+        }
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -49,7 +61,8 @@ router.post(
             college_id,
             college_registration_number,
             custom_address,
-            password
+            password,
+            referred_by
           ) VALUES (
             'Not-Provided',
             $1,
@@ -57,13 +70,12 @@ router.post(
             1,
             'ADD_TO_BE_VERIFIED',
             point(0,0),
-            $3
+            $3,
+            $4
           )
           RETURNING *`,
-        [email, phoneNumber, hashedPassword]
+        [email, phoneNumber, hashedPassword, referredBy]
       );
-
-
 
       res.status(201).json({
         message: 'User registered successfully',
@@ -75,6 +87,7 @@ router.post(
     }
   }
 );
+
 
 router.post(
   '/login',

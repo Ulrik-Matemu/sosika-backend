@@ -133,6 +133,16 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             status: 'assigned'
         });
 
+        function parsePoint(pointStr) {
+            const match = pointStr.match(/^POINT\(([-\d.]+)\s+([-\d.]+)\)$/);
+            if (!match) return null;
+            const [, x, y] = match;
+            return {
+                longitude: parseFloat(x),
+                latitude: parseFloat(y),
+            };
+        }
+
         let pickup_location = null;
         let dropoff_location = null;
         let phoneNumber = null;
@@ -143,17 +153,17 @@ router.put('/orders/:orderId/accept', async (req, res) => {
         );
 
         if (vendorResult.rows.length > 0) {
-            pickup_location = vendorResult.rows[0].geolocation; // POINT(x, y)
+            pickup_location = parsePoint(vendorResult.rows[0].geolocation); // POINT(x, y)
         }
 
         //Fetch User Geolocation 
         const userResult = await pool.query(
-            `SELECT geolocation FROM "user" WHERE id = $1`,
+            `SELECT custom_address FROM "user" WHERE id = $1`,
             [user_id]
         )
 
         if (userResult.rows.length > 0) {
-            dropoff_location = userResult.rows[0].geolocation; // POINT(x, y)
+            dropoff_location = parsePoint(userResult.rows[0].geolocation); // POINT(x, y)
         }
 
         // Fetch User Phone Number

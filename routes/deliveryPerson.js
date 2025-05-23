@@ -325,38 +325,7 @@ router.get('/deliveryPerson/:id', async (req, res) => {
     }
 });
 
-router.get('/deliveryPerson/routes', async (req, res) => {
-    const { from, to } = req.query;
-    if (!from || !to) {
-        return res.status(400).json({ error: 'From and To locations are required' });
-    }
 
-    try {
-        const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN;
-        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${from};${to}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
-        const response = await axios.get(url);
-        const route = response.data.routes[0];
-
-        return res.status(200).json({
-            distance: route.distance,
-            duration: route.duration,
-            geometry: route.geometry.coordinates,
-            geojson: {
-                type: 'FeatureCollection',
-                features: [
-                    {
-                        type: 'Feature',
-                        geometry: route.geometry,
-                        properties: {},
-                    },
-                ],
-            },
-        });
-    } catch (error) {
-        console.error('Error fetching route:', error);
-        return res.status(500).json({ error: 'Failed to fetch route' });
-    }
-})
 
 
 

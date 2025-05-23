@@ -3,7 +3,6 @@ const router = express.Router();
 const pool = require('../db'); // Assuming you have PostgreSQL connection pool setup
 const getIo = require('../socket').getIo;
 require('dotenv').config();
-const { sendVendorNotification } = require('../push-notifications');
 const nodemailer = require('nodemailer');
 const { sendNotificationToUser } = require('../notifications');
 
@@ -116,14 +115,7 @@ router.post('/orders', async (req, res) => {
             );
         }
 
-        if (vendor_id) {
-            await sendVendorNotification(
-                vendor_id,
-                'New Order Received',
-                `Order #${orderId}`,
-                `/vendor/orders/${orderId}`
-            );
-        }
+       
 
         await client.query('COMMIT');
         res.status(201).json({

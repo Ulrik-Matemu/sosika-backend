@@ -133,15 +133,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             status: 'assigned'
         });
 
-        function parsePoint(pointStr) {
-            const match = pointStr.match(/^POINT\(([-\d.]+)\s+([-\d.]+)\)$/);
-            if (!match) return null;
-            const [, x, y] = match;
-            return {
-                longitude: parseFloat(x),
-                latitude: parseFloat(y),
-            };
-        }
+       
 
         let pickup_location = null;
         let dropoff_location = null;
@@ -153,7 +145,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
         );
 
         if (vendorResult.rows.length > 0) {
-            pickup_location = parsePoint(vendorResult.rows[0].geolocation); // POINT(x, y)
+            pickup_location = vendorResult.rows[0].geolocation; // POINT(x, y)
         }
 
       const userResult = await pool.query(

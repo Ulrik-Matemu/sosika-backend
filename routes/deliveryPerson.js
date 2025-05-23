@@ -163,7 +163,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
 
         if (userResult.rows.length > 0) {
             // Corrected: Use custom_address
-            dropoff_location = parsePoint(userResult.rows[0].custom_address);
+            dropoff_location = userResult.rows[0].custom_address;
         }
 
         // Fetch User Phone Number

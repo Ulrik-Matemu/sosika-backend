@@ -156,14 +156,14 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             pickup_location = parsePoint(vendorResult.rows[0].geolocation); // POINT(x, y)
         }
 
-        //Fetch User Geolocation 
-        const userResult = await pool.query(
+      const userResult = await pool.query(
             `SELECT custom_address FROM "user" WHERE id = $1`,
             [user_id]
         )
 
         if (userResult.rows.length > 0) {
-            dropoff_location = parsePoint(userResult.rows[0].custom_address); // POINT(x, y)
+            // Corrected: Use custom_address
+            dropoff_location = parsePoint(userResult.rows[0].custom_address);
         }
 
         // Fetch User Phone Number

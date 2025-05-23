@@ -96,7 +96,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             `SELECT order_status, vendor_id, user_id FROM orders WHERE id = $1`,
             [orderId]
         );
-        
+
 
         if (orderCheck.rows.length === 0) {
             await client.query('ROLLBACK');
@@ -133,7 +133,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             status: 'assigned'
         });
 
-       
+
 
         let pickup_location = null;
         let dropoff_location = null;
@@ -148,7 +148,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             pickup_location = vendorResult.rows[0].geolocation; // POINT(x, y)
         }
 
-      const userResult = await pool.query(
+        const userResult = await pool.query(
             `SELECT custom_address FROM "user" WHERE id = $1`,
             [user_id]
         )
@@ -168,7 +168,7 @@ router.put('/orders/:orderId/accept', async (req, res) => {
             phoneNumber = userPhone.rows[0].phone_number;
         }
 
-        
+
 
         res.json({ message: 'Order assigned successfully', dropoff_location, pickup_location, orderId, phoneNumber });
     } catch (error) {
@@ -324,6 +324,39 @@ router.get('/deliveryPerson/:id', async (req, res) => {
         return res.status(500).json({ error: "Error fetching delivery person details" });
     }
 });
+
+router.get('/deliveryPerson/routes', async (req, res) => {
+    const { from, to } = req.query;
+    if (!from || !to) {
+        return res.status(400).json({ error: 'From and To locations are required' });
+    }
+
+    try {
+        const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN;
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${from};${to}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+        const response = await axios.get(url);
+        const route = response.data.routes[0];
+
+        return res.status(200).json({
+            distance: route.distance,
+            duration: route.duration,
+            geometry: route.geometry.coordinates,
+            geojson: {
+                type: 'FeatureCollection',
+                features: [
+                    {
+                        type: 'Feature',
+                        geometry: route.geometry,
+                        properties: {},
+                    },
+                ],
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching route:', error);
+        return res.status(500).json({ error: 'Failed to fetch route' });
+    }
+})
 
 
 

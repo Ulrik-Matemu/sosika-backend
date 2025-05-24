@@ -60,7 +60,7 @@ app.use(cors({
       "https://sosikavendor.netlify.app",
       "https://sosikaadmin.netlify.app",
       "http://localhost:5173",
-      "http://localhost:5173",
+      "http://localhost:5174",
       "https://sosikadelivery.netlify.app",
     ],
     credentials: true

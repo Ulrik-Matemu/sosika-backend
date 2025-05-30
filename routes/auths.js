@@ -418,4 +418,32 @@ router.post('/reset-password', async (req, res) => {
 });
 
 
+router.get('/referral/check', async (req, res) => {
+  const { user_id, target } = req.query;
+
+  if (!user_id || !target) {
+    return res.status(400).json({ error: 'Missing user_id or target' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT COUNT(*) AS referral_count FROM "user" WHERE referred_by = $1',
+      [user_id]
+    );
+
+    const referralCount = parseInt(result.rows[0].referral_count, 10);
+    const targetReached = referralCount >= parseInt(target, 10);
+
+    res.json({
+      user_id: user_id,
+      referral_count: referralCount,
+      target_reached: targetReached
+    });
+  } catch (error) {
+    console.error('Error checking referrals:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 module.exports = router;

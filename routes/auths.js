@@ -427,11 +427,11 @@ router.get('/referral/check', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT COUNT(*) AS referral_count FROM "user" WHERE referred_by = $1',
+      'SELECT * FROM "user" WHERE referred_by = $1',
       [user_id]
     );
 
-    const referralCount = parseInt(result.rows[0].referral_count, 10);
+    const referralCount = result.rows.length;
     const targetReached = referralCount >= parseInt(target, 10);
 
     res.json({

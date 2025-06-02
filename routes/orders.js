@@ -175,7 +175,24 @@ router.get('/orders/:id', async (req, res) => {
             return res.status(404).json({ message: 'Order not found' });
         }
 
-        res.json(orderResult.rows[0]);
+        let userPhone = null;
+
+        const userResult = await pool.query(
+            `SELECT phone_number FROM "user" WHERE id = $1`,
+            [orderResult.rows[0].user_id]
+        )
+
+        if (userResult.rows.length > 0) {
+            userPhone = userResult.rows[0].phone_number;
+        } else {
+            console.log('Phone number not found');
+        }
+
+
+
+        const orderData = orderResult.rows[0];
+        orderData.user_phone = userPhone;
+        res.json(orderData);
     } catch (error) {
         res.status(500).json({
             error: 'Failed to fetch order',

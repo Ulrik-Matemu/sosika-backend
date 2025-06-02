@@ -188,10 +188,9 @@ router.get('/orders/:id', async (req, res) => {
             console.log('Phone number not found');
         }
 
-
-
         const orderData = orderResult.rows[0];
-        orderData.user_phone = userPhone;
+        orderData.user_phone = userPhone; // Add user phone number to the order data
+
         res.json(orderData);
     } catch (error) {
         res.status(500).json({

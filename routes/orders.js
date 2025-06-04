@@ -118,7 +118,7 @@ router.post('/orders', async (req, res) => {
             `SELECT user_id FROM orders WHERE id = $1`,
             [orderId]
         );
-        const userId = userResult.rows[0].user_id;
+        const userId = userResult.rows[0].user_id; ///
 
         console.log(`Order created with ID: ${orderId}, Vendor ID: ${vendorId}, User ID: ${userId}`);
 

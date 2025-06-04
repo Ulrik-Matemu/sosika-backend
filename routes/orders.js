@@ -107,8 +107,19 @@ router.post('/orders', async (req, res) => {
         );
 
         const orderId = orderResult.rows[0].id;
-        const vendorId = orderResult.rows[0].vendor_id;
-        const userId = orderResult.rows[0].user_id;
+        
+        const vendorResult = await client.query(
+            `SELECT vendor_id FROM orders WHERE id = $1`,
+            [orderId]
+        );
+        const vendorId = vendorResult.rows[0].vendor_id;
+
+        const userResult = await client.query(
+            `SELECT user_id FROM orders WHERE id = $1`,
+            [orderId]
+        );
+        const userId = userResult.rows[0].user_id;
+
         console.log(`Order created with ID: ${orderId}, Vendor ID: ${vendorId}, User ID: ${userId}`);
 
         // Insert order items

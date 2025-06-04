@@ -13,11 +13,11 @@ const removeUserTokenFromDatabase = async (userId) => {
   }
 };
 
-const sendNotificationToUser = async (userId, title, body) => {
+const sendNotificationToUser = async (userId, role, title, body) => {
   try {
-    const deviceToken = await getToken(userId);
+    const deviceToken = await getToken(userId, role);
     if (!deviceToken) {
-      console.log(`No FCM token found for user ${userId}`);
+      console.log(`No FCM token found for ${role} ${userId}`);
       return;
     }
 
@@ -27,14 +27,14 @@ const sendNotificationToUser = async (userId, title, body) => {
     };
 
     const response = await admin.messaging().send(message);
-    console.log(`Notification sent to user ${userId}:`, response);
+    console.log(`Notification sent to ${role} ${userId}:`, response);
   } catch (error) {
-    console.error(`Error sending notification to user ${userId}:`, error);
+    console.error(`Error sending notification to ${role} ${userId}:`, error);
 
     // Handle invalid token (registration-token-not-registered)
     if (error.code === 'messaging/registration-token-not-registered') {
-      console.log(`FCM token is no longer valid for user ${userId}. Removing token...`);
-      await removeUserTokenFromDatabase(userId); // Remove invalid token
+      console.log(`FCM token is no longer valid for ${role} ${userId}. Removing token...`);
+      await removeUserTokenFromDatabase(userId, role); // Remove invalid token
     }
   }
 };

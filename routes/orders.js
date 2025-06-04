@@ -5,6 +5,7 @@ const getIo = require('../socket').getIo;
 require('dotenv').config();
 const nodemailer = require('nodemailer');
 const { sendNotificationToUser } = require('../notifications');
+const { getToken } = require('../tokenStore'); // Assuming you have a token store module
 
 
 // Define this first, before any route like /orders/:id
@@ -37,6 +38,8 @@ router.post('/orders/other-orders', async (req, res) => {
             subject: "New Order has been made, but not from the menu",
             text: `User: ${userId} has placed an order. They want ${quantity} of "${itemName}" with extra instructions: "${extraInstructions}."`,
         });
+
+        
 
         return res.status(201).json({
             success: true,
@@ -104,6 +107,8 @@ router.post('/orders', async (req, res) => {
         );
 
         const orderId = orderResult.rows[0].id;
+        const vendorId = orderResult.rows[0].vendor_id;
+        const userId = orderResult.rows[0].user_id;
 
         // Insert order items
         for (const item of order_items) {
@@ -135,6 +140,8 @@ router.post('/orders', async (req, res) => {
             subject: "New Order has been made",
             text: `A new order has been placed with ID: ${orderId}.`,
         });
+
+        sendNotificationToUser(vendorId, "vendor", "You have a new Order!", `User: ${userId} has placed an order.`);
     } catch (error) {
         await client.query('ROLLBACK');
         res.status(500).json({

@@ -109,6 +109,7 @@ router.post('/orders', async (req, res) => {
         const orderId = orderResult.rows[0].id;
         const vendorId = orderResult.rows[0].vendor_id;
         const userId = orderResult.rows[0].user_id;
+        console.log(`Order created with ID: ${orderId}, Vendor ID: ${vendorId}, User ID: ${userId}`);
 
         // Insert order items
         for (const item of order_items) {

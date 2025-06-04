@@ -40,6 +40,14 @@ router.post(
         return res.status(400).json({ error: 'Email already exists' });
       }
 
+      const existingPhone = await pool.query(
+        'SELECT * FROM "user" WHERE phone_number = $1',
+        [phoneNumber]
+      );
+      if (existingPhone.rows.length > 0) {
+        return res.status(400).json({ error: 'Phone number already exists' });
+      }
+
       // Optional: Validate that the referral ID exists
       if (referredBy !== 0) {
         const refCheck = await pool.query(

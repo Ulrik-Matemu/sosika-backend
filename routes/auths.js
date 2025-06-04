@@ -48,7 +48,7 @@ router.post(
         return res.status(400).json({ error: 'Phone number already exists' });
       }
 
-      // Optional: Validate that the referral ID exist
+      // Optional: Validate that the referral ID exists
       if (referredBy !== 0) {
         const refCheck = await pool.query(
           'SELECT id FROM "user" WHERE id = $1',

@@ -26,6 +26,10 @@ const saveToken = async (userId, token, role) => {
 
 // Get FCM Token
 const getToken = async (userId, role) => {
+  if (!userId || !role) {
+    console.error('User ID and role are required to retrieve token');
+    return null;
+  }
   try {
     const safeUserId = userId.toString();
     const safeRole = role.toLowerCase();

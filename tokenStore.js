@@ -1,27 +1,39 @@
 const redisClient = require('./redisClient');
 
 // Save FCM Token
-const saveToken = async (userId, token) => {
+const saveToken = async (userId, token, role) => {
   try {
-    // Ensure userId is converted to string
-    const userKey = `user:${userId.toString()}`;
+    // Validate and normalize input
+    const normalizedRole = role.toLowerCase();
+    const validRoles = ['user', 'vendor', 'deliveryperson'];
     
-    // Ensure token is a string
+    if (!validRoles.includes(normalizedRole)) {
+      throw new Error(`Invalid role: ${role}`);
+    }
+
+    // Create a unique key like: user:123, vendor:456, deliveryperson:789
+    const key = `${normalizedRole}:${userId.toString()}`;
     const tokenValue = token.toString();
-    
-    await redisClient.set(userKey, tokenValue);
-    console.log(`FCM token saved for user ${userId}`, token);
+
+    await redisClient.set(key, tokenValue);
+    console.log(`FCM token saved for ${normalizedRole} ${userId}`, token);
   } catch (error) {
     console.error('Error saving token:', error);
-    throw error; // Re-throw to allow proper error handling
+    throw error; // Re-throw for upstream handling
   }
 };
 
+
 // Get FCM Token
-const getToken = async (userId) => {
+const getToken = async (userId, role) => {
   try {
-    const userKey = `user:${userId.toString()}`;
-    return await redisClient.get(userKey);
+    const safeUserId = userId.toString();
+    const safeRole = role.toLowerCase();
+
+    const redisKey = `fcm:${safeRole}:${safeUserId}`;
+    const token = await redisClient.get(redisKey);
+
+    return token;
   } catch (error) {
     console.error('Error retrieving token:', error);
     return null;
@@ -29,11 +41,14 @@ const getToken = async (userId) => {
 };
 
 // Remove FCM Token
-const delToken = async (userId) => {
+const delToken = async (userId, role) => {
   try {
-    const userKey = `user:${userId.toString()}`;
-    await redisClient.del(userKey);
-    console.log(`FCM token removed for user ${userId}`);
+    const safeUserId = userId.toString();
+    const safeRole = role.toLowerCase();
+
+    const redisKey = `fcm:${safeRole}:${safeUserId}`;
+    await redisClient.del(redisKey);
+    console.log(`FCM token removed for ${safeRole} ${userId}`);
   } catch (error) {
     console.error('Error deleting token:', error);
   }

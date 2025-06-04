@@ -154,19 +154,31 @@ router.post('/admin', async (req, res) => {
 });
 
 router.post('/fcm-token', async (req, res) => {
-  const { fcmToken, userId } = req.body;
+  const { fcmToken, userId, role } = req.body;
 
-  if (!fcmToken || !userId) {
-    return res.status(400).json({ error: "Oops! Something went wrong, not your fault though." });
+  if (!fcmToken || !userId || !role) {
+    return res.status(400).json({ error: "Missing required fields: fcmToken, userId, or role." });
   }
+
+  const validRoles = ['user', 'vendor', 'deliveryPerson'];
+  if (!validRoles.includes(role)) {
+    return res.status(400).json({ error: "Invalid role provided." });
+  }
+
+  // Determine the table based on role
+  const tableName = role === 'user' ? 'user'
+                  : role === 'vendor' ? 'vendor'
+                  : 'delivery_person';
+
   try {
-    const result = await pool.query('SELECT * FROM "user" WHERE id = $1', [userId]);
+    const result = await pool.query(`SELECT * FROM "${tableName}" WHERE id = $1`, [userId]);
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: `${role} not found` });
     }
 
     // Save the token in your database or Redis
-    await saveToken(userId, fcmToken);
+    await saveToken(userId, fcmToken, role); // Modify saveToken to handle role if needed
 
     res.status(200).json({ message: "FCM token saved successfully" });
   } catch (err) {
@@ -174,6 +186,7 @@ router.post('/fcm-token', async (req, res) => {
     res.status(500).json({ error: "Failed to save FCM token" });
   }
 });
+
 
 
 router.get('/users', async (req, res) => {

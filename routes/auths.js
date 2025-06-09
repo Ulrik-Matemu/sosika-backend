@@ -467,4 +467,24 @@ router.get('/referral/check', async (req, res) => {
 });
 
 
+router.get('/delivery/:vendorId', async (req, res) => {
+  const vendorId = req.params.vendorId;
+  try {
+    const result = await pool.query(
+      'SELECT geolocation FROM vendor WHERE id = $1',
+      [vendorId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    res.status(200).json({ geolocation: result.rows[0].geolocation });
+  } catch (error) {
+    console.error('Error fetching vendor geolocation:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 module.exports = router;

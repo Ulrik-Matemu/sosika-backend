@@ -192,7 +192,7 @@ async function processUser() {
 }
 
 
-cron.schedule('20 11 * * *', () => {
+cron.schedule('27 11 * * *', () => {
     console.log('🕙 Running duplicate phone number check...');
     processUser();
 });

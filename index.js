@@ -10,7 +10,10 @@ const server = http.createServer(app);
 const webPush = require('web-push');
 const { createClient } = require('redis');
 const rateLimit = require('express-rate-limit');
-const helmet = require('helmet')
+const helmet = require('helmet');
+const cron = require('node-cron');
+const nodemailer = require('nodemailer');
+const { groupByNormalizedPhone } = require('./utils/duplicatePhoneUtil');
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -52,6 +55,7 @@ const deliveryPersonRouter = require('./routes/deliveryPerson');
 const ordersRouter = require("./routes/orders");
 const orderMenuItemsRouter = require("./routes/orderMenuItems");
 const aiRecommendationRouter = require("./routes/aiReccomendationRoutes");
+const { text } = require('body-parser');
 
 app.use(cors({
     origin: [
@@ -132,6 +136,66 @@ app.use('/api/', deliveryPersonRouter);
 app.use("/api/", ordersRouter);
 app.use("/api/", orderMenuItemsRouter);
 app.use("/api/", aiRecommendationRouter);
+
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+async function fetchUsers() {
+  const result = await pool.query(`
+    SELECT id, email, phone_number FROM "user"
+    WHERE phone_number IS NOT NULL
+    AND (
+      last_notified IS NULL OR last_notified < NOW() - INTERVAL '3 days'
+    )
+  `);
+  return result.rows;
+}
+
+
+async function sendEmail(user) {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: 'Please Update Your Phone Number',
+    text: `Hi,\n\nWe noticed your phone number might be similar to another user's. Please update it in your profile to help us improve customer service.\n\nThanks,\nSosika Team`
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent to ${user.email}`);
+
+    // Update last_notified
+    await pool.query('UPDATE "user" SET last_notified = NOW() WHERE id = $1', [user.id]);
+  } catch (err) {
+    console.error(`❌ Failed to send email to ${user.email}:`, err.message);
+  }
+}
+
+
+
+// Main task
+async function processUser() {
+    const users = await fetchUsers();
+    const duplicates = groupByNormalizedPhone(users);
+
+    for (const group of duplicates) {
+        for (const user of group) {
+            await sendEmail(user);
+        }
+    }
+}
+
+
+cron.schedule('0 10 * * *', () => {
+    console.log('🕙 Running duplicate phone number check...');
+    processUser();
+});
 
 
 

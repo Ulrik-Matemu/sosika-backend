@@ -195,6 +195,28 @@ router.delete('/menuItems/item/:id', async (req, res) => {
 });
 
 
+router.get('/menuItems/popular-menu-items', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                m.id, m.name, m.price, m.image_url, m.vendor_id,
+                SUM(omi.quantity) AS total_sold
+            FROM menu_item m
+            JOIN order_menu_item omi ON m.id = omi.menu_item_id
+            GROUP BY m.id
+            ORDER BY total_sold DESC
+            LIMIT 12
+        `);
+
+        res.status(200).json({ success: true, items: result.rows });
+    } catch (error) {
+        console.error('Error fetching popular items:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch popular items' });
+    }
+});
+
+
+
 
 
 

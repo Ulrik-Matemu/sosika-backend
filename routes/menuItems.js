@@ -195,7 +195,7 @@ router.delete('/menuItems/item/:id', async (req, res) => {
 });
 
 
-router.get('/menuItems/popular-menu-items', async (req, res) => {
+router.get('/menuItem/popular-menu-items', async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 

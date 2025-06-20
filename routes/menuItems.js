@@ -199,7 +199,7 @@ router.get('/menuItem/popular-menu-items', async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 
-                m.id, m.name, m.price, m.image_url, m.vendor_id,
+                m.id, m.name, m.price, m.image_url, m.description, m.category, m.is_available, m.vendor_id,
                 SUM(omi.quantity) AS total_sold
             FROM menu_item m
             JOIN order_menu_item omi ON m.id = omi.menu_item_id

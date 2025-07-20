@@ -56,12 +56,23 @@ router.post('/vendor/login', async (req, res) => {
 });
 
 router.get('/vendor', async (req, res) => {
+    const { lat, lng, radius } = req.query;
+
     try {
-        const result = await pool.query('SELECT * FROM vendor');
-        return res.status(201).json(result.rows);
+        if (lat && lng && radius) {
+            const result = await pool.query(
+                `SELECT * FROM vendor 
+                 WHERE earth_box(ll_to_earth($1::float, $2::float), $3::float) @> ll_to_earth(geolocation[0], geolocation[1])`,
+                [lat, lng, radius] // radius in meters
+            );
+            return res.status(200).json(result.rows);
+        } else {
+            const result = await pool.query('SELECT * FROM vendor');
+            return res.status(200).json(result.rows);
+        }
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ error: "Error fetching vendor"});
+        return res.status(500).json({ error: "Error fetching vendor" });
     }
 });
 

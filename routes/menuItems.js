@@ -195,35 +195,52 @@ router.delete('/menuItems/item/:id', async (req, res) => {
 });
 
 
+// GET /menuItem/popular-menu-items
 router.get('/menuItem/popular-menu-items', async (req, res) => {
-    const vendorIds = req.query.vendorIds?.split(',').map(Number);
+  const vendorIds = req.query.vendorIds?.split(',').map(Number).filter(Boolean);
 
-    if (!vendorIds || vendorIds.length === 0) {
-        return res.status(400).json({ success: false, message: "Missing vendorIds" });
+  try {
+    let result;
+
+    if (vendorIds && vendorIds.length > 0) {
+      // Fetch popular items for specific vendors
+      result = await pool.query(
+        `
+        SELECT 
+          m.id, m.name, m.price, m.image_url, m.description, m.category, m.is_available, m.vendor_id,
+          SUM(omi.quantity) AS total_sold
+        FROM menu_item m
+        JOIN order_menu_item omi ON m.id = omi.menu_item_id
+        WHERE m.vendor_id = ANY($1::int[])
+        GROUP BY m.id
+        ORDER BY total_sold DESC
+        LIMIT 12
+        `,
+        [vendorIds]
+      );
+    } else {
+      // Fetch globally popular items
+      result = await pool.query(
+        `
+        SELECT 
+          m.id, m.name, m.price, m.image_url, m.description, m.category, m.is_available, m.vendor_id,
+          SUM(omi.quantity) AS total_sold
+        FROM menu_item m
+        JOIN order_menu_item omi ON m.id = omi.menu_item_id
+        GROUP BY m.id
+        ORDER BY total_sold DESC
+        LIMIT 12
+        `
+      );
     }
 
-    try {
-        const result = await pool.query(
-            `
-            SELECT 
-                m.id, m.name, m.price, m.image_url, m.description, m.category, m.is_available, m.vendor_id,
-                SUM(omi.quantity) AS total_sold
-            FROM menu_item m
-            JOIN order_menu_item omi ON m.id = omi.menu_item_id
-            WHERE m.vendor_id = ANY($1::int[])
-            GROUP BY m.id
-            ORDER BY total_sold DESC
-            LIMIT 12
-            `,
-            [vendorIds]
-        );
-
-        res.status(200).json({ success: true, items: result.rows });
-    } catch (error) {
-        console.error('Error fetching popular items:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch popular items' });
-    }
+    res.status(200).json({ success: true, items: result.rows });
+  } catch (error) {
+    console.error('Error fetching popular items:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch popular items' });
+  }
 });
+
 
 
 

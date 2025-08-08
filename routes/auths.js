@@ -486,5 +486,29 @@ router.get('/delivery/:vendorId', async (req, res) => {
   }
 });
 
+router.post("/waitlist", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    const result = await pool.query(
+      "INSERT INTO waitlist (email) VALUES ($1) ON CONFLICT (email) DO NOTHING RETURNING *",
+      [email]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(200).json({ message: "Email already in waitlist" });
+    }
+
+    res.status(201).json({ message: "Email added to waitlist", data: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 module.exports = router;

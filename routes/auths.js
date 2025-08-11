@@ -510,7 +510,7 @@ router.post("/waitlist", async (req, res) => {
   }
 });
 
-app.post("/vendors/register",  async (req, res) => {
+router.post("/vendors/register",  async (req, res) => {
   const client = await pool.connect();
   try {
     const userId = req.user.id;

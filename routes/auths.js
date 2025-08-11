@@ -513,13 +513,12 @@ router.post("/waitlist", async (req, res) => {
 router.post("/vendors/register",  async (req, res) => {
   const client = await pool.connect();
   try {
-    const userId = req.user.id;
-    const { vendor_name, category, does_own_delivery, geolocation } = req.body;
+    const { user_id, vendor_name, category, does_own_delivery, geolocation } = req.body;
 
     // 1. Get logged-in user info
     const userResult = await client.query(
       "SELECT full_name, college_id, geolocation FROM public.user WHERE id = $1",
-      [userId]
+      [user_id]
     );
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });

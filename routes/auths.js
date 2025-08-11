@@ -11,6 +11,7 @@ const body = require('express-validator').body;
 const validationResult = require('express-validator').validationResult;
 
 
+
 const JWT_SECRET = process.env.JWT_SECRET;
 
 
@@ -513,7 +514,7 @@ router.post("/waitlist", async (req, res) => {
 router.post("/vendors/register",  async (req, res) => {
   const client = await pool.connect();
   try {
-    const { user_id, vendor_name, category, does_own_delivery, geolocation } = req.body;
+    const { user_id, vendor_name, category, does_own_delivery, geolocation, vendorPassword } = req.body;
 
     // 1. Get logged-in user info
     const userResult = await client.query(

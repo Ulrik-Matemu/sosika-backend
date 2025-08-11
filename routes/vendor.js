@@ -6,6 +6,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const jwt = require('jsonwebtoken');
 const e = require('express');
 require('dotenv').config();
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' }); // Temporary local storage folder
 
 
 router.post('/vendor/register', async (req, res) => {
@@ -192,6 +194,48 @@ router.put('/orders/:orderId/confirm', async (req, res) => {
     } finally {
         client.release();
     }
+});
+
+router.post('/vendors/:id/logo', upload.single('logo'), async (req, res) => {
+  const vendorId = req.params.id;
+
+  if (!req.file) {
+    return res.status(400).json({ error: "No logo image uploaded" });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    // Upload image to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'vendor-logos',
+      use_filename: true,
+      unique_filename: false,
+    });
+
+    // Remove the temp file
+    fs.unlinkSync(req.file.path);
+
+    // Update vendor record with logo_url
+    const updateResult = await client.query(
+      'UPDATE vendor SET logo_url = $1 WHERE id = $2 RETURNING *',
+      [result.secure_url, vendorId]
+    );
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+
+    res.json({
+      message: "Logo uploaded successfully",
+      vendor: updateResult.rows[0],
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to upload logo" });
+  } finally {
+    client.release();
+  }
 });
 
 

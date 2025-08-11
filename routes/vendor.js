@@ -8,6 +8,7 @@ const e = require('express');
 require('dotenv').config();
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' }); // Temporary local storage folder
+const cloudinary = require('../cloudinary');
 
 
 router.post('/vendor/register', async (req, res) => {

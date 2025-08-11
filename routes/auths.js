@@ -510,5 +510,47 @@ router.post("/waitlist", async (req, res) => {
   }
 });
 
+app.post("/vendors/register",  async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.user.id;
+    const { vendor_name, category, does_own_delivery, geolocation } = req.body;
+
+    // 1. Get logged-in user info
+    const userResult = await client.query(
+      "SELECT full_name, college_id, geolocation FROM public.user WHERE id = $1",
+      [userId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const user = userResult.rows[0];
+
+    // 2. Insert vendor
+    const insertResult = await client.query(
+      `INSERT INTO vendor 
+       (name, owner_name, college_id, geolocation, does_own_delivery, category)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        vendor_name,
+        user.full_name,
+        user.college_id,
+        geolocation || user.geolocation,
+        does_own_delivery || false,
+        category
+      ]
+    );
+
+    res.status(201).json({ vendor: insertResult.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
+  }
+});
+
+
 
 module.exports = router;

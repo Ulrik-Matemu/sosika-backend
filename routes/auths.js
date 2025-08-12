@@ -532,7 +532,7 @@ router.post("/vendors/register",  async (req, res) => {
     const insertResult = await client.query(
       `INSERT INTO vendor 
       //  (name, owner_name, college_id, geolocation, does_own_delivery, category, password)
-       VALUES ($1, $2, $3, $4, $5, $6)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         vendor_name,

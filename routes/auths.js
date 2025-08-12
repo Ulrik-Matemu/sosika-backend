@@ -526,10 +526,12 @@ router.post("/vendors/register",  async (req, res) => {
     }
     const user = userResult.rows[0];
 
+    const hashedVendorPassword = await bcrypt.hash(vendorPassword, 10);
+
     // 2. Insert vendor
     const insertResult = await client.query(
       `INSERT INTO vendor 
-       (name, owner_name, college_id, geolocation, does_own_delivery, category)
+      //  (name, owner_name, college_id, geolocation, does_own_delivery, category, password)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [
@@ -538,7 +540,8 @@ router.post("/vendors/register",  async (req, res) => {
         user.college_id,
         geolocation || user.geolocation,
         does_own_delivery || false,
-        category
+        category,
+        hashedVendorPassword
       ]
     );
 

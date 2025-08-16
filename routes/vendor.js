@@ -99,7 +99,10 @@ router.put('/vendor/:id', async (req, res) => {
     const { id } = req.params;
     const { name, ownerName, collegeId, geolocation, password } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    let hashedPassword;
+    if (password) {
+        hashedPassword = await bcrypt.hash(password, 10);
+    }
 
     // Build the update query dynamically
     const fields = [];
@@ -154,6 +157,7 @@ router.put('/vendor/:id', async (req, res) => {
         return res.status(500).json({ error: "Error updating vendor" });
     }
 });
+
 
 
 

@@ -129,7 +129,7 @@ router.put('/vendor/:id', async (req, res) => {
 
     if (geolocation) {
         fields.push('geolocation');
-        values.push(pointValue ? `point(${pointValue})` : null);
+        values.push(pointValue);
     }
     if (password) {
         fields.push('password');

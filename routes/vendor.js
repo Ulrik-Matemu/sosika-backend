@@ -21,7 +21,7 @@ router.post('/vendor/register', async (req, res) => {
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
-        const result = await pool.query('INSERT INTO vendor (name, owner_name, college_id, geolocation, password) VALUES ($1, $2, $3, $4, $5) RETURNING *', 
+        const result = await pool.query('INSERT INTO vendor (name, owner_name, college_id, geolocation, password) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [name, ownerName, collegeId, geolocation, hashedPassword]
         );
         return res.status(201).json({ message: "Vendor registered successfully", user: result.rows[0] });
@@ -94,7 +94,7 @@ router.get('/vendor/:id', async (req, res) => {
     }
 });
 
- 
+
 router.put('/vendor/:id', async (req, res) => {
     const { id } = req.params;
     const { name, ownerName, collegeId, geolocation, password } = req.body;
@@ -121,9 +121,15 @@ router.put('/vendor/:id', async (req, res) => {
         fields.push('college_id');
         values.push(collegeId);
     }
+
+    let pointValue = null;
+    if (geolocation?.x && geolocation?.y) {
+        pointValue = `(${geolocation.x},${geolocation.y})`;
+    }
+
     if (geolocation) {
         fields.push('geolocation');
-        values.push(geolocation);
+        values.push(pointValue ? `point(${pointValue})` : null);
     }
     if (password) {
         fields.push('password');
@@ -203,74 +209,74 @@ router.put('/orders/:orderId/confirm', async (req, res) => {
 });
 
 router.post('/vendors/:id/logo', upload.single('logo'), async (req, res) => {
-  const vendorId = req.params.id;
+    const vendorId = req.params.id;
 
-  if (!req.file) {
-    return res.status(400).json({ error: "No logo image uploaded" });
-  }
-
-  const client = await pool.connect();
-
-  try {
-    // Upload image to Cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'vendor-logos',
-      use_filename: true,
-      unique_filename: false,
-    });
-
-    // Remove the temp file
-    fs.unlinkSync(req.file.path);
-
-    // Update vendor record with logo_url
-    const updateResult = await client.query(
-      'UPDATE vendor SET logo_url = $1 WHERE id = $2 RETURNING *',
-      [result.secure_url, vendorId]
-    );
-
-    if (updateResult.rows.length === 0) {
-      return res.status(404).json({ error: "Vendor not found" });
+    if (!req.file) {
+        return res.status(400).json({ error: "No logo image uploaded" });
     }
 
-    res.json({
-      message: "Logo uploaded successfully",
-      vendor: updateResult.rows[0],
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to upload logo" });
-  } finally {
-    client.release();
-  }
+    const client = await pool.connect();
+
+    try {
+        // Upload image to Cloudinary
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            folder: 'vendor-logos',
+            use_filename: true,
+            unique_filename: false,
+        });
+
+        // Remove the temp file
+        fs.unlinkSync(req.file.path);
+
+        // Update vendor record with logo_url
+        const updateResult = await client.query(
+            'UPDATE vendor SET logo_url = $1 WHERE id = $2 RETURNING *',
+            [result.secure_url, vendorId]
+        );
+
+        if (updateResult.rows.length === 0) {
+            return res.status(404).json({ error: "Vendor not found" });
+        }
+
+        res.json({
+            message: "Logo uploaded successfully",
+            vendor: updateResult.rows[0],
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to upload logo" });
+    } finally {
+        client.release();
+    }
 });
 
 
 // GET /api/users/:id
 router.get('/user-vendor/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query('SELECT id, is_vendor FROM public.user WHERE id = $1', [id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+    const { id } = req.params;
+    try {
+        const result = await pool.query('SELECT id, is_vendor FROM public.user WHERE id = $1', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 
 router.get('/user-vendor', async (req, res) => {
-  const { userId } = req.query;
+    const { userId } = req.query;
 
-  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
-  try {
-    const result = await pool.query('SELECT * FROM public.vendor WHERE user_id = $1', [userId]);
-    res.json(result.rows); // return array for easier handling
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+    try {
+        const result = await pool.query('SELECT * FROM public.vendor WHERE user_id = $1', [userId]);
+        res.json(result.rows); // return array for easier handling
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 

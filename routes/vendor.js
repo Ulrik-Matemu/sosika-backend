@@ -241,4 +241,34 @@ router.post('/vendors/:id/logo', upload.single('logo'), async (req, res) => {
 });
 
 
+// GET /api/users/:id
+router.get('/user-vendor/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT id, is_vendor FROM public.user WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+router.get('/user-vendor', async (req, res) => {
+  const { userId } = req.query;
+
+  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+  try {
+    const result = await pool.query('SELECT * FROM public.vendor WHERE user_id = $1', [userId]);
+    res.json(result.rows); // return array for easier handling
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+
 module.exports = router;

@@ -176,8 +176,8 @@ router.post('/fcm-token', async (req, res) => {
 
   // Determine the table based on role
   const tableName = role === 'user' ? 'user'
-                  : role === 'vendor' ? 'vendor'
-                  : 'delivery_person';
+    : role === 'vendor' ? 'vendor'
+      : 'delivery_person';
 
   try {
     const result = await pool.query(`SELECT * FROM "${tableName}" WHERE id = $1`, [userId]);
@@ -511,7 +511,7 @@ router.post("/waitlist", async (req, res) => {
   }
 });
 
-router.post("/vendors/register",  async (req, res) => {
+router.post("/vendors/register", async (req, res) => {
   const client = await pool.connect();
   try {
     const { user_id, vendor_name, category, does_own_delivery, geolocation, vendorPassword } = req.body;
@@ -531,8 +531,8 @@ router.post("/vendors/register",  async (req, res) => {
     // 2. Insert vendor
     const insertResult = await client.query(
       `INSERT INTO vendor 
-      (name, owner_name, college_id, geolocation, does_own_delivery, category, password)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (name, owner_name, college_id, geolocation, does_own_delivery, category, password, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         vendor_name,
@@ -541,11 +541,18 @@ router.post("/vendors/register",  async (req, res) => {
         geolocation || user.geolocation,
         does_own_delivery || false,
         category,
-        hashedVendorPassword
+        hashedVendorPassword,
+        user_id
       ]
     );
 
-    res.status(201).json({ vendor: insertResult.rows[0] });
+    // 3. Update user to mark as vendor
+    await client.query(
+      "UPDATE public.user SET is_vendor = TRUE WHERE id = $1",
+      [user_id]
+    );
+
+    res.status(201).json({ vendor: insertResult.rows[0], message: "Vendor created and user marked as vendor" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -553,6 +560,7 @@ router.post("/vendors/register",  async (req, res) => {
     client.release();
   }
 });
+
 
 
 

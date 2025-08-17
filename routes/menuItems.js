@@ -129,6 +129,72 @@ router.post('/menuItems', upload.single('image'), async (req, res) => {
     }
 });
 
+// Edit menu item
+router.put('/menuItems/:id', upload.single('image'), async (req, res) => {
+  const { id } = req.params;
+  const { name, description, category, price } = req.body;
+
+  try {
+    let imageUrl;
+
+    // If a new image is uploaded, push it to Cloudinary
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'menu-items',
+        use_filename: true,
+      });
+
+      fs.unlinkSync(req.file.path);
+      imageUrl = result.secure_url;
+    }
+
+    // Build update query dynamically
+    const fields = [];
+    const values = [];
+    let query = "UPDATE menu_item SET ";
+
+    if (name) {
+      fields.push(`name = $${fields.length + 1}`);
+      values.push(name);
+    }
+    if (description) {
+      fields.push(`description = $${fields.length + 1}`);
+      values.push(description);
+    }
+    if (category) {
+      fields.push(`category = $${fields.length + 1}`);
+      values.push(category);
+    }
+    if (price) {
+      fields.push(`price = $${fields.length + 1}`);
+      values.push(price);
+    }
+    if (imageUrl) {
+      fields.push(`image_url = $${fields.length + 1}`);
+      values.push(imageUrl);
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: "No fields provided for update" });
+    }
+
+    query += fields.join(", ") + ` WHERE id = $${fields.length + 1} RETURNING *`;
+    values.push(id);
+
+    const dbResult = await pool.query(query, values);
+
+    if (dbResult.rows.length === 0) {
+      return res.status(404).json({ error: "Menu item not found" });
+    }
+
+    return res.status(200).json({ message: "Menu item updated successfully", menuItem: dbResult.rows[0] });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to update menu item" });
+  }
+});
+
+
 
 router.put('/menuItems/:id/status', async (req, res) => {
     const { id } = req.params;

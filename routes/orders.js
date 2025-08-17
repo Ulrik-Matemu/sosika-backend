@@ -369,79 +369,84 @@ router.patch('/orders/:id/ratings', async (req, res) => {
 
 // Get all orders with filtering options
 router.get('/orders', async (req, res) => {
-    try {
-        const {
-            user_id,
-            vendor_id,
-            delivery_person_id,
-            status,
-            from_date,
-            to_date
-        } = req.query;
+  try {
+    const {
+      user_id,
+      vendor_id,
+      delivery_person_id,
+      status,
+      from_date,
+      to_date
+    } = req.query;
 
-        let query = `
-            SELECT o.*, 
-                   json_agg(json_build_object(
-                       'id', omi.id,
-                       'menu_item_id', omi.menu_item_id,
-                       'quantity', omi.quantity,
-                       'price', omi.price,
-                       'total_amount', omi.total_amount
-                   )) as items
-            FROM orders o
-            LEFT JOIN order_menu_item omi ON o.id = omi.order_id
-            WHERE 1=1
-        `;
-        const params = [];
-        let paramCount = 1;
+    // Join orders with order_menu_item and user to get items and user's phone
+    let query = `
+      SELECT o.*, u.phone_number,
+             json_agg(json_build_object(
+               'id', omi.id,
+               'menu_item_id', omi.menu_item_id,
+               'quantity', omi.quantity,
+               'price', omi.price,
+               'total_amount', omi.total_amount
+             )) as items
+      FROM orders o
+      LEFT JOIN order_menu_item omi ON o.id = omi.order_id
+      LEFT JOIN "user" u ON o.user_id = u.id
+      WHERE 1=1
+    `;
 
-        if (user_id) {
-            query += ` AND o.user_id = $${paramCount}`;
-            params.push(user_id);
-            paramCount++;
-        }
+    const params = [];
+    let paramCount = 1;
 
-        if (vendor_id) {
-            query += ` AND o.vendor_id = $${paramCount}`;
-            params.push(vendor_id);
-            paramCount++;
-        }
-
-        if (delivery_person_id) {
-            query += ` AND o.delivery_person_id = $${paramCount}`;
-            params.push(delivery_person_id);
-            paramCount++;
-        }
-
-        if (status) {
-            query += ` AND o.order_status = $${paramCount}`;
-            params.push(status);
-            paramCount++;
-        }
-
-        if (from_date) {
-            query += ` AND o.order_datetime >= $${paramCount}`;
-            params.push(from_date);
-            paramCount++;
-        }
-
-        if (to_date) {
-            query += ` AND o.order_datetime <= $${paramCount}`;
-            params.push(to_date);
-            paramCount++;
-        }
-
-        query += ` GROUP BY o.id ORDER BY o.order_datetime DESC`;
-
-        const result = await pool.query(query, params);
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({
-            error: 'Failed to fetch orders',
-            details: error.message
-        });
+    if (user_id) {
+      query += ` AND o.user_id = $${paramCount}`;
+      params.push(user_id);
+      paramCount++;
     }
+
+    if (vendor_id) {
+      query += ` AND o.vendor_id = $${paramCount}`;
+      params.push(vendor_id);
+      paramCount++;
+    }
+
+    if (delivery_person_id) {
+      query += ` AND o.delivery_person_id = $${paramCount}`;
+      params.push(delivery_person_id);
+      paramCount++;
+    }
+
+    if (status) {
+      query += ` AND o.order_status = $${paramCount}`;
+      params.push(status);
+      paramCount++;
+    }
+
+    if (from_date) {
+      query += ` AND o.order_datetime >= $${paramCount}`;
+      params.push(from_date);
+      paramCount++;
+    }
+
+    if (to_date) {
+      query += ` AND o.order_datetime <= $${paramCount}`;
+      params.push(to_date);
+      paramCount++;
+    }
+
+    query += ` GROUP BY o.id, u.phone_number ORDER BY o.order_datetime DESC`;
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Failed to fetch orders:', error);
+    res.status(500).json({
+      error: 'Failed to fetch orders',
+      details: error.message
+    });
+  }
 });
+
 
 router.get("/orders/:orderId/status", async (req, res) => {
     try {

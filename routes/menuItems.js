@@ -314,7 +314,7 @@ router.get('/menuItem/nearby', async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT mi.*, v.vendor_name, v.geolocation
+      SELECT mi.*, v.name, v.geolocation
       FROM menu_item mi
       JOIN vendor v ON mi.vendor_id = v.id
       WHERE ST_DWithin(

@@ -367,12 +367,17 @@ router.get('/menu-items/:menuItemId/reviews', async (req, res) => {
     const { menuItemId } = req.params;
 
     const result = await client.query(
-      `SELECT r.id, r.rating, r.review, r.created_at, r.vendor_reply, r.replied_at,
-              u.name as reviewer
-       FROM menu_item_review r
-       JOIN "user" u ON r.user_id = u.id
-       WHERE r.menu_item_id = $1
-       ORDER BY r.created_at DESC`,
+      `SELECT 
+    r.rating,
+    r.review,
+    LEFT(SPLIT_PART(u.email, '@', 1), 1) AS reviewer_initial, -- first letter of email username
+    r.vendor_reply,
+    r.created_at
+FROM menu_item_review r
+JOIN "user" u ON r.user_id = u.id
+WHERE r.menu_item_id = $1
+ORDER BY r.created_at DESC;
+`,
       [menuItemId]
     );
 

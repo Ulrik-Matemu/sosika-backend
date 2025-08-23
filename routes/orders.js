@@ -108,7 +108,7 @@ router.post('/orders', async (req, res) => {
         // Get vendor’s linked user_id
         const vendorUserResult = await client.query(
             `SELECT v.user_id 
-       FROM vendors v
+       FROM vendor v
        INNER JOIN orders o ON v.id = o.vendor_id
        WHERE o.id = $1`,
             [orderId]

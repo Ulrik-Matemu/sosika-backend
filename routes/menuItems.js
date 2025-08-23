@@ -370,7 +370,7 @@ router.get('/menu-items/:menuItemId/reviews', async (req, res) => {
       `SELECT r.id, r.rating, r.review, r.created_at, r.vendor_reply, r.replied_at,
               u.name as reviewer
        FROM menu_item_review r
-       JOIN users u ON r.user_id = u.id
+       JOIN "user" u ON r.user_id = u.id
        WHERE r.menu_item_id = $1
        ORDER BY r.created_at DESC`,
       [menuItemId]

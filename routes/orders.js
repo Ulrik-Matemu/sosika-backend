@@ -39,7 +39,7 @@ router.post('/orders/other-orders', async (req, res) => {
             text: `User: ${userId} has placed an order. They want ${quantity} of "${itemName}" with extra instructions: "${extraInstructions}."`,
         });
 
-        
+
 
         return res.status(201).json({
             success: true,
@@ -107,12 +107,16 @@ router.post('/orders', async (req, res) => {
         );
 
         const orderId = orderResult.rows[0].id;
-        
-        const vendorResult = await client.query(
-            `SELECT vendor_id FROM orders WHERE id = $1`,
+
+        const vendorUserResult = await client.query(
+            `SELECT v.user_id 
+            FROM vendors v
+            INNER JOIN orders o ON v.id = o.vendor_id
+            WHERE o.id = $1`,
             [orderId]
         );
-        const vendorId = vendorResult.rows[0].vendor_id;
+
+        const vendorUserId = vendorUserResult.rows[0]?.user_id;
 
         const userResult = await client.query(
             `SELECT user_id FROM orders WHERE id = $1`,
@@ -132,13 +136,15 @@ router.post('/orders', async (req, res) => {
             );
         }
 
-       
+
 
         await client.query('COMMIT');
         res.status(201).json({
             message: 'Order created successfully',
             order_id: orderId
         });
+
+
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
@@ -147,13 +153,31 @@ router.post('/orders', async (req, res) => {
             },
         });
 
-        await transporter.sendMail({
-            to: process.env.EMAIL_USER,
-            subject: "New Order has been made",
-            text: `A new order has been placed with ID: ${orderId}.`,
-        });
+        const vendorEmailResult = await client.query(
+            `SELECT email FROM "user" WHERE id = $1`,
+            [vendorUserId]
+        );
 
-        sendNotificationToUser(vendorId, "vendor", "You have a new Order!", `User: ${userId} has placed an order.`);
+        const vendorEmail = vendorEmailResult.rows[0]?.email;
+
+
+        if (vendorEmail) {
+            await transporter.sendMail({
+                to: vendorEmail,
+                subject: "New Order!",
+                text: `A new order has been placed with ID: ${orderId}.`,
+            });
+        }
+
+
+        if (vendorUserId) {
+            sendNotificationToUser(
+                vendorUserId,
+                "user",
+                "You have a new Order!",
+                `User: ${userId} has placed an order.`
+            );
+        }
     } catch (error) {
         await client.query('ROLLBACK');
         res.status(500).json({
@@ -369,18 +393,18 @@ router.patch('/orders/:id/ratings', async (req, res) => {
 
 // Get all orders with filtering options
 router.get('/orders', async (req, res) => {
-  try {
-    const {
-      user_id,
-      vendor_id,
-      delivery_person_id,
-      status,
-      from_date,
-      to_date
-    } = req.query;
+    try {
+        const {
+            user_id,
+            vendor_id,
+            delivery_person_id,
+            status,
+            from_date,
+            to_date
+        } = req.query;
 
-    // Join orders with order_menu_item and user to get items and user's phone
-    let query = `
+        // Join orders with order_menu_item and user to get items and user's phone
+        let query = `
       SELECT o.*, u.phone_number,
              json_agg(json_build_object(
                'id', omi.id,
@@ -395,56 +419,56 @@ router.get('/orders', async (req, res) => {
       WHERE 1=1
     `;
 
-    const params = [];
-    let paramCount = 1;
+        const params = [];
+        let paramCount = 1;
 
-    if (user_id) {
-      query += ` AND o.user_id = $${paramCount}`;
-      params.push(user_id);
-      paramCount++;
+        if (user_id) {
+            query += ` AND o.user_id = $${paramCount}`;
+            params.push(user_id);
+            paramCount++;
+        }
+
+        if (vendor_id) {
+            query += ` AND o.vendor_id = $${paramCount}`;
+            params.push(vendor_id);
+            paramCount++;
+        }
+
+        if (delivery_person_id) {
+            query += ` AND o.delivery_person_id = $${paramCount}`;
+            params.push(delivery_person_id);
+            paramCount++;
+        }
+
+        if (status) {
+            query += ` AND o.order_status = $${paramCount}`;
+            params.push(status);
+            paramCount++;
+        }
+
+        if (from_date) {
+            query += ` AND o.order_datetime >= $${paramCount}`;
+            params.push(from_date);
+            paramCount++;
+        }
+
+        if (to_date) {
+            query += ` AND o.order_datetime <= $${paramCount}`;
+            params.push(to_date);
+            paramCount++;
+        }
+
+        query += ` GROUP BY o.id, u.phone_number ORDER BY o.order_datetime DESC`;
+
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Failed to fetch orders:', error);
+        res.status(500).json({
+            error: 'Failed to fetch orders',
+            details: error.message
+        });
     }
-
-    if (vendor_id) {
-      query += ` AND o.vendor_id = $${paramCount}`;
-      params.push(vendor_id);
-      paramCount++;
-    }
-
-    if (delivery_person_id) {
-      query += ` AND o.delivery_person_id = $${paramCount}`;
-      params.push(delivery_person_id);
-      paramCount++;
-    }
-
-    if (status) {
-      query += ` AND o.order_status = $${paramCount}`;
-      params.push(status);
-      paramCount++;
-    }
-
-    if (from_date) {
-      query += ` AND o.order_datetime >= $${paramCount}`;
-      params.push(from_date);
-      paramCount++;
-    }
-
-    if (to_date) {
-      query += ` AND o.order_datetime <= $${paramCount}`;
-      params.push(to_date);
-      paramCount++;
-    }
-
-    query += ` GROUP BY o.id, u.phone_number ORDER BY o.order_datetime DESC`;
-
-    const result = await pool.query(query, params);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Failed to fetch orders:', error);
-    res.status(500).json({
-      error: 'Failed to fetch orders',
-      details: error.message
-    });
-  }
 });
 
 

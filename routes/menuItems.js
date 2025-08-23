@@ -309,31 +309,31 @@ router.get('/menuItem/popular-menu-items', async (req, res) => {
 
 
 // routes/menuItems.js
-router.get('/menuItem/nearby', async (req, res) => {
-  const { lat, lng, radius } = req.query; // radius in km
-  try {
-    const result = await pool.query(
-      `
-      SELECT mi.*, v.name, v.geolocation
-      FROM menu_item mi
-      JOIN vendor v ON mi.vendor_id = v.id
-      WHERE ST_DWithin(
-        v.geolocation::geography,
-        ST_MakePoint($1, $2)::geography,
-        $3 * 1000
-      )
-      ORDER BY ST_Distance(
-        v.geolocation::geography,
-        ST_MakePoint($1, $2)::geography
-      )
-      LIMIT 50
-      `,
-      [lng, lat, radius]
-    );
+router.get('/nearby', async (req, res) => {
+  const { lat, lng, radius } = req.query;
 
-    res.json(result.rows);
+
+  if (!lat || !lng) {
+    return res.status(400).json({ error: 'Latitude and longitude are required' });
+  }
+
+
+  const searchRadius = parseFloat(radius) || 5; // units same as your point (degrees)
+
+
+  try {
+    const query = `
+SELECT m.*, v.name AS vendor_name
+FROM menu_item m
+JOIN vendor v ON m.vendor_id = v.id
+WHERE (v.geolocation <@> point($1, $2)) <= $3
+`;
+
+
+    const { rows } = await pool.query(query, [parseFloat(lng), parseFloat(lat), searchRadius]);
+    res.json(rows);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching nearby menu items:', err);
     res.status(500).json({ error: 'Failed to fetch nearby menu items' });
   }
 });

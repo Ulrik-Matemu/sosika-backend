@@ -87,81 +87,72 @@ router.post('/orders', async (req, res) => {
             order_items
         } = req.body;
 
-        // Calculate total amount based on ordered menu items
+        // Calculate total amount
         let totalItemsAmount = 0;
         for (const item of order_items) {
             totalItemsAmount += item.quantity * item.price;
         }
-
         const total_amount = totalItemsAmount + delivery_fee;
-
-
 
         // Insert order
         const orderResult = await client.query(
             `INSERT INTO orders (
-                user_id, vendor_id, order_status, delivery_fee, 
-                total_amount, requested_datetime, requested_asap
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        user_id, vendor_id, order_status, delivery_fee, 
+        total_amount, requested_datetime, requested_asap
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
             [user_id, vendor_id, 'pending', delivery_fee, total_amount, requested_datetime, requested_asap]
         );
 
         const orderId = orderResult.rows[0].id;
 
+        // Get vendor’s linked user_id
         const vendorUserResult = await client.query(
             `SELECT v.user_id 
-            FROM vendors v
-            INNER JOIN orders o ON v.id = o.vendor_id
-            WHERE o.id = $1`,
+       FROM vendors v
+       INNER JOIN orders o ON v.id = o.vendor_id
+       WHERE o.id = $1`,
             [orderId]
         );
-
         const vendorUserId = vendorUserResult.rows[0]?.user_id;
 
+        // Get customer (order creator)
         const userResult = await client.query(
             `SELECT user_id FROM orders WHERE id = $1`,
             [orderId]
         );
-        const userId = userResult.rows[0].user_id; ///
+        const userId = userResult.rows[0].user_id;
 
-        console.log(`Order created with ID: ${orderId}, Vendor ID: ${vendorId}, User ID: ${userId}`);
+        console.log(`Order created with ID: ${orderId}, Vendor User ID: ${vendorUserId}, User ID: ${userId}`);
 
         // Insert order items
         for (const item of order_items) {
             await client.query(
                 `INSERT INTO order_menu_item (
-                    order_id, menu_item_id, quantity, price, total_amount
-                ) VALUES ($1, $2, $3, $4, $5)`,
+          order_id, menu_item_id, quantity, price, total_amount
+        ) VALUES ($1, $2, $3, $4, $5)`,
                 [orderId, item.menu_item_id, item.quantity, item.price, item.quantity * item.price]
             );
         }
 
-
-
         await client.query('COMMIT');
-        res.status(201).json({
-            message: 'Order created successfully',
-            order_id: orderId
-        });
 
-
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
-
+        // ✅ Get vendor email
         const vendorEmailResult = await client.query(
             `SELECT email FROM "user" WHERE id = $1`,
             [vendorUserId]
         );
-
         const vendorEmail = vendorEmailResult.rows[0]?.email;
 
-
+        // ✅ Send email
         if (vendorEmail) {
+            const transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS,
+                },
+            });
+
             await transporter.sendMail({
                 to: vendorEmail,
                 subject: "New Order!",
@@ -169,7 +160,7 @@ router.post('/orders', async (req, res) => {
             });
         }
 
-
+        // ✅ Send push notification
         if (vendorUserId) {
             sendNotificationToUser(
                 vendorUserId,
@@ -178,8 +169,16 @@ router.post('/orders', async (req, res) => {
                 `User: ${userId} has placed an order.`
             );
         }
+
+        // Send API response last
+        res.status(201).json({
+            message: 'Order created successfully',
+            order_id: orderId
+        });
+
     } catch (error) {
         await client.query('ROLLBACK');
+        console.error("Order creation failed:", error);
         res.status(500).json({
             error: 'Failed to create order',
             details: error.message
@@ -188,6 +187,7 @@ router.post('/orders', async (req, res) => {
         client.release();
     }
 });
+
 
 
 // Get order by ID

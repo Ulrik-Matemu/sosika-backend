@@ -338,6 +338,98 @@ WHERE (v.geolocation <@> point($1, $2)) <= $3
   }
 });
 
+// 1. Post a review (User)
+router.post('/menu-items/:menuItemId/reviews', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { user_id, rating, review } = req.body;
+    const { menuItemId } = req.params;
+
+    const result = await client.query(
+      `INSERT INTO menu_item_review (menu_item_id, user_id, rating, review)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [menuItemId, user_id, rating, review]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to add review' });
+  } finally {
+    client.release();
+  }
+});
+
+// 2. Get reviews for a menu item
+router.get('/menu-items/:menuItemId/reviews', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { menuItemId } = req.params;
+
+    const result = await client.query(
+      `SELECT r.id, r.rating, r.review, r.created_at, r.vendor_reply, r.replied_at,
+              u.name as reviewer
+       FROM menu_item_review r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.menu_item_id = $1
+       ORDER BY r.created_at DESC`,
+      [menuItemId]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  } finally {
+    client.release();
+  }
+});
+
+// 3. Vendor reply (only vendor who owns the item)
+router.post('/reviews/:reviewId/reply', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { vendor_id, reply } = req.body; // vendor_id comes from auth middleware ideally
+    const { reviewId } = req.params;
+
+    // First check if this review belongs to a menu_item owned by the vendor
+    const check = await client.query(
+      `SELECT mi.vendor_id
+       FROM menu_item_review r
+       JOIN menu_item mi ON r.menu_item_id = mi.id
+       WHERE r.id = $1`,
+      [reviewId]
+    );
+
+    if (check.rowCount === 0) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    if (check.rows[0].vendor_id !== vendor_id) {
+      return res.status(403).json({ error: 'Not authorized to reply to this review' });
+    }
+
+    // Update review with reply (only once)
+    const result = await client.query(
+      `UPDATE menu_item_review
+       SET vendor_reply = $1, replied_at = now()
+       WHERE id = $2 AND vendor_reply IS NULL
+       RETURNING *`,
+      [reply, reviewId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(400).json({ error: 'Reply already exists' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reply to review' });
+  } finally {
+    client.release();
+  }
+});
 
 
 

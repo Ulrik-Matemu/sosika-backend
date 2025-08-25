@@ -386,7 +386,7 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
 
     // Send notification to user
-    const resetLink = `https://sosika.netlify.app/#/reset-password?token=${resetToken}`;
+    const resetLink = `https://sosika.app/reset-password?token=${resetToken}`;
     const transporter = nodemailer.createTransport({
       service: "gmail", // or your email service
       auth: {
